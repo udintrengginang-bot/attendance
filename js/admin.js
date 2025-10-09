@@ -226,35 +226,57 @@ document.addEventListener('DOMContentLoaded', () => {
         const renderDailyTasksPage = () => {
             const page = mainContent.querySelector('#tasks');
             const siteOptions = sitesData.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Assign Daily Tasks</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><label for="task-site-select" class="block text-sm font-medium text-slate-700">Select a Site to View Laborers</label><select id="task-site-select" class="mt-1 block w-full md:w-1/2 p-3 border border-slate-300 rounded-md"><option value="">-- Select Site --</option>${siteOptions}</select></div><div id="task-assignment-list" class="bg-white p-6 rounded-xl shadow-lg hidden"></div>`;
-            document.getElementById('task-site-select').addEventListener('change', () => {
-                const siteSelect = document.getElementById('task-site-select');
-                const taskListDiv = document.getElementById('task-assignment-list');
+            page.innerHTML = `
+                <h2 class="text-3xl font-bold text-slate-800 mb-6">Assign Daily Tasks</h2>
+                <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+                    <label for="task-site-select" class="block text-sm font-medium text-slate-700">1. Select a Site</label>
+                    <select id="task-site-select" class="mt-1 block w-full md:w-1/2 p-3 border border-slate-300 rounded-md">
+                        <option value="">-- Select Site --</option>
+                        ${siteOptions}
+                    </select>
+                </div>
+                <div id="task-assignment-container" class="hidden">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">2. Enter Tasks for Laborers</h3>
+                    <div id="task-assignment-list" class="space-y-4"></div>
+                </div>
+            `;
+        
+            const siteSelect = document.getElementById('task-site-select');
+            const taskListContainer = document.getElementById('task-assignment-container');
+            const taskListDiv = document.getElementById('task-assignment-list');
+        
+            siteSelect.addEventListener('change', () => {
                 const selectedSiteId = siteSelect.value;
+                taskListDiv.innerHTML = ''; 
+        
                 if (!selectedSiteId) {
-                    taskListDiv.classList.add('hidden');
+                    taskListContainer.classList.add('hidden');
                     return;
                 }
+        
                 const siteLaborers = laborersData.filter(l => l.assignedSiteIds && l.assignedSiteIds.includes(selectedSiteId));
-                let laborerInputs = siteLaborers.map(l => `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center border-b border-slate-200 py-3"><label for="task-${l.id}" class="font-medium text-slate-800 col-span-1">${l.name}</label><input type="text" id="task-${l.id}" data-laborer-id="${l.id}" value="${l.currentTask || ''}" class="sm:col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Optional: Enter task description..."></div>`).join('');
+                
                 if (siteLaborers.length === 0) {
-                    laborerInputs = `<p class="text-center text-slate-500 py-4">No laborers assigned to this site.</p>`;
-                }
-                taskListDiv.innerHTML = `<div class="space-y-4">${laborerInputs}</div>${siteLaborers.length > 0 ? `<div class="flex justify-end mt-6"><button id="save-tasks-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Save All Tasks for Site</button></div>` : ''}`;
-                taskListDiv.classList.remove('hidden');
-                if (siteLaborers.length > 0) {
-                    document.getElementById('save-tasks-btn').addEventListener('click', async () => {
-                        const inputs = taskListDiv.querySelectorAll('input[data-laborer-id]');
-                        const updatePromises = [];
-                        inputs.forEach(input => {
-                            const laborerId = input.dataset.laborerId;
-                            const taskValue = input.value.trim();
-                            updatePromises.push(updateDoc(doc(db, 'laborers', laborerId), { currentTask: taskValue }));
-                        });
-                        await Promise.all(updatePromises);
-                        alert('Tasks updated successfully!');
+                    taskListDiv.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500 py-4">No laborers are assigned to this site.</p></div>`;
+                } else {
+                    siteLaborers.forEach(l => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-white p-4 rounded-xl shadow-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-center';
+                        card.innerHTML = `
+                            <label for="task-${l.id}" class="font-bold text-slate-800 md:col-span-1">${l.name}</label>
+                            <input type="text" id="task-${l.id}" data-laborer-id="${l.id}" value="${l.currentTask || ''}" class="md:col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Enter task description...">
+                            <button data-action="save-task" data-laborer-id="${l.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors justify-self-end w-full md:w-auto">Save</button>
+                        `;
+                        taskListDiv.appendChild(card);
                     });
+
+                    const saveAllContainer = document.createElement('div');
+                    saveAllContainer.className = 'flex justify-end mt-6 pt-4 border-t border-slate-200';
+                    saveAllContainer.innerHTML = `<button id="save-all-tasks-btn" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Save All Tasks for Site</button>`;
+                    taskListDiv.appendChild(saveAllContainer);
                 }
+                
+                taskListContainer.classList.remove('hidden');
             });
         };
 
@@ -429,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
         }
 
-        mainContent.addEventListener('click', e => {
+        mainContent.addEventListener('click', async e => {
             const target = e.target.closest('button');
             if (!target) return;
 
@@ -437,8 +459,81 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.id === 'add-laborer-btn') return openLaborerModal();
             if (target.id === 'add-expense-btn') return openExpenseModal();
 
+            if (target.id === 'save-all-tasks-btn') {
+                const inputs = mainContent.querySelectorAll('#task-assignment-list input[data-laborer-id]');
+                if (inputs.length === 0) return;
+
+                target.disabled = true;
+                target.textContent = 'Saving All...';
+
+                const updatePromises = [];
+                inputs.forEach(input => {
+                    const laborerId = input.dataset.laborerId;
+                    const taskValue = input.value.trim();
+                    updatePromises.push(updateDoc(doc(db, 'laborers', laborerId), { currentTask: taskValue }));
+                });
+
+                try {
+                    await Promise.all(updatePromises);
+                    target.textContent = 'All Saved!';
+                    target.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                    target.classList.add('bg-green-500', 'text-white');
+                } catch (error) {
+                    console.error("Error saving all tasks:", error);
+                    target.textContent = 'Error!';
+                    target.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                    target.classList.add('bg-red-500', 'text-white');
+                } finally {
+                     setTimeout(() => {
+                        target.textContent = 'Save All Tasks for Site';
+                        target.classList.remove('bg-green-500', 'bg-red-500', 'text-white');
+                        target.classList.add('bg-amber-500', 'hover:bg-amber-600', 'text-slate-900');
+                        target.disabled = false;
+                    }, 2000);
+                }
+                return;
+            }
+
             const action = target.dataset.action;
             const id = target.dataset.id;
+            
+            if (action === 'save-task') {
+                const laborerId = target.dataset.laborerId;
+                if (!laborerId) return;
+                
+                const input = document.getElementById(`task-${laborerId}`);
+                const taskValue = input.value.trim();
+        
+                target.disabled = true;
+                target.textContent = 'Saving...';
+                
+                try {
+                    await updateDoc(doc(db, 'laborers', laborerId), { currentTask: taskValue });
+                    target.textContent = 'Saved!';
+                    target.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    target.classList.add('bg-green-500');
+        
+                    setTimeout(() => {
+                        target.textContent = 'Save';
+                        target.classList.remove('bg-green-500');
+                        target.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                        target.disabled = false;
+                    }, 2000);
+                } catch (error) {
+                    console.error("Error saving task: ", error);
+                    target.textContent = 'Error!';
+                    target.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    target.classList.add('bg-red-500');
+                    setTimeout(() => {
+                        target.textContent = 'Save';
+                        target.classList.remove('bg-red-500');
+                        target.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                        target.disabled = false;
+                    }, 3000);
+                }
+                return;
+            }
+
             if (!action || !id) return;
             
             if (action === 'delete-site') {
@@ -467,4 +562,3 @@ document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
     }
 });
-
