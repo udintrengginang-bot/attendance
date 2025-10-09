@@ -4,17 +4,17 @@ import { getFirestore, collection, onSnapshot, query, addDoc, doc, updateDoc, de
 
 // --- PASTE YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
-    apiKey: "AIzaSyArMFpT8YIkJhMGIEPTghKMCTTQsbAwK3I",
-    authDomain: "dad-attendance.firebaseapp.com",
-    projectId: "dad-attendance",
-    storageBucket: "dad-attendance.firebasestorage.app",
-    messagingSenderId: "626292583397",
-    appId: "1:626292583397:web:b0078d3a49840f38631d0c"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 // --- END OF FIREBASE CONFIG ---
 
 if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
-    document.body.innerHTML = `<div class="h-screen w-screen flex items-center justify-center bg-zinc-100 p-4"><div class="p-8 text-center bg-red-100 text-red-800 rounded-lg shadow-md"><h1 class="text-2xl font-bold">Configuration Error</h1><p class="mt-2">Firebase is not configured. Please edit the <strong>/js/admin.js</strong> file and replace placeholder values.</p></div></div>`;
+    document.body.innerHTML = `<div class="h-screen w-screen flex items-center justify-center bg-zinc-100 p-4"><div class="p-8 text-center bg-red-100 text-red-800 rounded-lg shadow-md"><h1 class="text-2xl font-bold">Configuration Error</h1><p class="mt-2">Firebase is not configured. Please edit the <strong>/js/admin.js</strong> file and replace the placeholder values.</p></div></div>`;
     throw new Error("Firebase config is not valid.");
 }
 
@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  reportContainer.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">Payroll Report</h3><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6">Laborer</th><th class="py-3 px-6 text-center">Total Hours</th><th class="py-3 px-6 text-center">Rate</th><th class="py-3 px-6 text-right">Payment Due</th></tr></thead><tbody>${tableRows}</tbody><tfoot><tr class="border-t-2 border-slate-300"><td colspan="3" class="py-4 px-6 font-bold text-right text-slate-600">Total Payroll</td><td class="py-4 px-6 font-bold text-right text-xl text-slate-800">${currencyFormatter.format(totalPayroll)}</td></tr></tfoot></table></div>`;
             });
         };
-
+        
         async function calculatePayroll(startDate, endDate) {
             const logsQuery = query(collection(db, "attendance_logs"), where("timestamp", ">=", Timestamp.fromDate(startDate)), where("timestamp", "<=", Timestamp.fromDate(endDate)));
             const logsSnapshot = await getDocs(logsQuery);
@@ -255,30 +255,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return payroll;
         }
-        
-        // --- ROUTER & NAVIGATION ---
-        const routes = {
-            '#dashboard': renderDashboardPage,
-            '#summary': renderProjectSummaryPage,
-            '#tasks': renderDailyTasksPage,
-            '#payroll': renderPayrollPage,
-            '#sites': renderSitesPage,
-            '#laborers': renderLaborersPage,
-            '#expenses': renderExpensesPage,
-            '#attendance': renderAttendanceLogPage
-        };
 
         const renderCurrentPage = () => {
             const hash = window.location.hash || '#dashboard';
             mainContent.querySelectorAll('.page-content').forEach(c => c.classList.add('hidden'));
-            const renderFunction = routes[hash];
-            if (renderFunction) {
-                renderFunction();
-            } else {
-                renderDashboardPage(); // Default to dashboard
-            }
+            if (hash === '#payroll') renderPayrollPage();
+            else if (hash === '#sites') renderSitesPage();
+            else if (hash === '#laborers') renderLaborersPage();
+            else if (hash === '#expenses') renderExpensesPage();
+            else if (hash === '#attendance') renderAttendanceLogPage();
+            else if (hash === '#tasks') renderDailyTasksPage();
+            else renderDashboardPage();
         };
-
+        
         const handleNavigation = () => {
             const hash = window.location.hash || '#dashboard';
             dashboardContent.querySelectorAll('.nav-item').forEach(item => {
