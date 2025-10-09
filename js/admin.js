@@ -14,7 +14,7 @@ const firebaseConfig = {
 // --- END OF FIREBASE CONFIG ---
 
 if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
-    document.body.innerHTML = `<div class="h-screen w-screen flex items-center justify-center bg-zinc-100 p-4"><div class="p-8 text-center bg-red-100 text-red-800 rounded-lg shadow-md"><h1 class="text-2xl font-bold">Configuration Error</h1><p class="mt-2">Firebase is not configured. Please edit the <strong>/js/admin.js</strong> file and replace the placeholder values.</p></div></div>`;
+    document.body.innerHTML = `<div class="h-screen w-screen flex items-center justify-center bg-zinc-100 p-4"><div class="p-8 text-center bg-red-100 text-red-800 rounded-lg shadow-md"><h1 class="text-2xl font-bold">Configuration Error</h1><p class="mt-2">Firebase is not configured. Please edit the <strong>/js/admin.js</strong> file and replace placeholder values.</p></div></div>`;
     throw new Error("Firebase config is not valid.");
 }
 
@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mainContent = dashboardContent.querySelector('main');
         mainContent.innerHTML = `
             <section id="dashboard" class="page-content"></section>
+            <section id="summary" class="page-content hidden"></section>
             <section id="tasks" class="page-content hidden"></section>
             <section id="payroll" class="page-content hidden"></section>
             <section id="sites" class="page-content hidden"></section>
@@ -255,24 +256,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return payroll;
         }
         
+        // --- ROUTER & NAVIGATION ---
+        const routes = {
+            '#dashboard': renderDashboardPage,
+            '#summary': renderProjectSummaryPage,
+            '#tasks': renderDailyTasksPage,
+            '#payroll': renderPayrollPage,
+            '#sites': renderSitesPage,
+            '#laborers': renderLaborersPage,
+            '#expenses': renderExpensesPage,
+            '#attendance': renderAttendanceLogPage
+        };
+
+        const renderCurrentPage = () => {
+            const hash = window.location.hash || '#dashboard';
+            mainContent.querySelectorAll('.page-content').forEach(c => c.classList.add('hidden'));
+            const renderFunction = routes[hash];
+            if (renderFunction) {
+                renderFunction();
+            } else {
+                renderDashboardPage(); // Default to dashboard
+            }
+        };
+
         const handleNavigation = () => {
             const hash = window.location.hash || '#dashboard';
             dashboardContent.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.toggle('active', item.getAttribute('href') === hash);
             });
             renderCurrentPage();
-        };
-
-        const renderCurrentPage = () => {
-            const hash = window.location.hash || '#dashboard';
-            mainContent.querySelectorAll('.page-content').forEach(c => c.classList.add('hidden'));
-            if (hash === '#payroll') renderPayrollPage();
-            else if (hash === '#sites') renderSitesPage();
-            else if (hash === '#laborers') renderLaborersPage();
-            else if (hash === '#expenses') renderExpensesPage();
-            else if (hash === '#attendance') renderAttendanceLogPage();
-            else if (hash === '#tasks') renderDailyTasksPage();
-            else renderDashboardPage();
         };
 
         // --- ATTACH LISTENERS AND START THE APP ---
