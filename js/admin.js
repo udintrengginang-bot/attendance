@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             for (const laborerId in payroll) {
-                payroll[log.laborerId].paymentDue = payroll[log.laborerId].totalHours * payroll[log.laborerId].rate;
+                payroll[laborerId].paymentDue = payroll[laborerId].totalHours * payroll[laborerId].rate;
             }
             return payroll;
         }
