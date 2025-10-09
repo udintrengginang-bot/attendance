@@ -130,14 +130,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const openLaborerModal = (laborer = {}) => {
             const isEditing = !!laborer.id;
             const modal = document.getElementById('form-modal');
-            const siteOptions = sitesData.map(s => `<option value="${s.id}" ${s.id === laborer.siteId ? 'selected' : ''}>${s.name}</option>`).join('');
-            modal.innerHTML = `<div class="bg-white rounded-lg shadow-xl w-full max-w-md m-4"><div class="p-6 border-b"><h3 class="text-2xl font-bold">${isEditing ? 'Edit Laborer' : 'Add New Laborer'}</h3></div><form id="laborer-form" class="p-6 space-y-4"><input type="hidden" id="laborer-id" value="${laborer.id || ''}"><div><label for="laborer-name" class="font-medium text-slate-700">Full Name</label><input type="text" id="laborer-name" value="${laborer.name || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-site" class="font-medium text-slate-700">Default Site</label><select id="laborer-site" class="w-full p-2 border border-slate-300 rounded"><option value="">-- No Default Site --</option>${siteOptions}</select></div><div><label for="laborer-mobile" class="font-medium text-slate-700">Mobile Number (10 Digits)</label><input type="tel" id="laborer-mobile" value="${laborer.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-pin" class="font-medium text-slate-700">4-Digit PIN</label><input type="text" id="laborer-pin" value="${laborer.pin || ''}" pattern="[0-9]{4}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-rate" class="font-medium text-slate-700">Hourly Rate (₹)</label><input type="number" id="laborer-rate" value="${laborer.hourlyRate || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="flex justify-end gap-4 pt-4"><button type="button" class="modal-cancel-btn px-4 py-2 rounded bg-slate-200">Cancel</button><button type="submit" class="px-4 py-2 rounded bg-amber-500 font-semibold">${isEditing ? 'Update' : 'Save'}</button></div></form></div>`;
+            const assignedSites = laborer.assignedSiteIds || [];
+            const siteCheckboxes = sitesData.map(s => `
+                <div class="flex items-center">
+                    <input type="checkbox" id="site-${s.id}" value="${s.id}" class="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500" ${assignedSites.includes(s.id) ? 'checked' : ''}>
+                    <label for="site-${s.id}" class="ml-3 text-slate-700">${s.name}</label>
+                </div>
+            `).join('');
+
+            modal.innerHTML = `<div class="bg-white rounded-lg shadow-xl w-full max-w-md m-4"><div class="p-6 border-b"><h3 class="text-2xl font-bold">${isEditing ? 'Edit Laborer' : 'Add New Laborer'}</h3></div><form id="laborer-form" class="p-6 space-y-4"><input type="hidden" id="laborer-id" value="${laborer.id || ''}"><div><label for="laborer-name" class="font-medium text-slate-700">Full Name</label><input type="text" id="laborer-name" value="${laborer.name || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="space-y-2">
+            <label class="font-medium text-slate-700">Assign Sites</label>
+            <div class="p-2 border border-slate-300 rounded-md max-h-32 overflow-y-auto space-y-2">${siteCheckboxes}</div>
+            </div><div><label for="laborer-mobile" class="font-medium text-slate-700">Mobile Number (10 Digits)</label><input type="tel" id="laborer-mobile" value="${laborer.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-pin" class="font-medium text-slate-700">4-Digit PIN</label><input type="text" id="laborer-pin" value="${laborer.pin || ''}" pattern="[0-9]{4}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-rate" class="font-medium text-slate-700">Hourly Rate (₹)</label><input type="number" id="laborer-rate" value="${laborer.hourlyRate || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="flex justify-end gap-4 pt-4"><button type="button" class="modal-cancel-btn px-4 py-2 rounded bg-slate-200">Cancel</button><button type="submit" class="px-4 py-2 rounded bg-amber-500 font-semibold">${isEditing ? 'Update' : 'Save'}</button></div></form></div>`;
             modal.classList.remove('hidden');
             modal.querySelector('.modal-cancel-btn').addEventListener('click', () => modal.classList.add('hidden'));
             document.getElementById('laborer-form').addEventListener('submit', async e => {
                 e.preventDefault();
                 const id = document.getElementById('laborer-id').value;
-                const data = { name: document.getElementById('laborer-name').value, siteId: document.getElementById('laborer-site').value, mobileNumber: document.getElementById('laborer-mobile').value, pin: document.getElementById('laborer-pin').value, hourlyRate: parseFloat(document.getElementById('laborer-rate').value) };
+                const assignedSiteIds = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+                const data = { 
+                    name: document.getElementById('laborer-name').value, 
+                    assignedSiteIds,
+                    mobileNumber: document.getElementById('laborer-mobile').value, 
+                    pin: document.getElementById('laborer-pin').value, 
+                    hourlyRate: parseFloat(document.getElementById('laborer-rate').value) 
+                };
                 if (id) { await updateDoc(doc(db, 'laborers', id), data); } else { await addDoc(collection(db, 'laborers'), { ...data, status: 'Clocked Out' }); }
                 modal.classList.add('hidden');
             });
@@ -176,10 +193,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const renderLaborersPage = () => {
             const page = mainContent.querySelector('#laborers');
             let tableRows = laborersData.map(l => {
-                const siteName = sitesData.find(s => s.id === l.siteId)?.name || '<span class="text-slate-400">Not Assigned</span>';
-                return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium text-slate-800">${l.name}</td><td class="py-4 px-6">${siteName}</td><td class="py-4 px-6 text-slate-600">${l.mobileNumber || 'N/A'}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(l.hourlyRate || 0)}/hr</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-laborer" data-id="${l.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-laborer" data-id="${l.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`
+                const assignedSites = (l.assignedSiteIds || [])
+                    .map(siteId => sitesData.find(s => s.id === siteId)?.name || 'Unknown Site')
+                    .join(', ');
+                return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium text-slate-800">${l.name}</td><td class="py-4 px-6">${assignedSites || '<span class="text-slate-400">Not Assigned</span>'}</td><td class="py-4 px-6 text-slate-600">${l.mobileNumber || 'N/A'}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(l.hourlyRate || 0)}/hr</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-laborer" data-id="${l.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-laborer" data-id="${l.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`
             }).join('');
-            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Laborers</h2><button id="add-laborer-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Laborer</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Default Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile Number</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-center">Rate</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Laborers</h2><button id="add-laborer-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Laborer</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile Number</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-center">Hourly Rate</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
 
         const renderExpensesPage = () => {
@@ -216,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     taskListDiv.classList.add('hidden');
                     return;
                 }
-                const siteLaborers = laborersData.filter(l => l.siteId === selectedSiteId);
+                const siteLaborers = laborersData.filter(l => l.assignedSiteIds && l.assignedSiteIds.includes(selectedSiteId));
                 let laborerInputs = siteLaborers.map(l => `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center border-b border-slate-200 py-3"><label for="task-${l.id}" class="font-medium text-slate-800 col-span-1">${l.name}</label><input type="text" id="task-${l.id}" data-laborer-id="${l.id}" value="${l.currentTask || ''}" class="sm:col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Optional: Enter task description..."></div>`).join('');
                 if (siteLaborers.length === 0) {
                     laborerInputs = `<p class="text-center text-slate-500 py-4">No laborers assigned to this site.</p>`;
@@ -241,18 +260,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const renderPayrollPage = () => {
             const page = mainContent.querySelector('#payroll');
-            const endDate = new Date(), startDate = new Date();
-            startDate.setDate(endDate.getDate() - 6);
-            const formatDate = (date) => date.toISOString().split('T')[0];
-            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Payroll Calculator</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><form id="payroll-form" class="flex flex-wrap items-end gap-4"><div><label for="start-date" class="block text-sm font-medium text-slate-700">Start Date</label><input type="date" id="start-date" value="${formatDate(startDate)}" class="mt-1 p-2 border border-slate-300 rounded-md"></div><div><label for="end-date" class="block text-sm font-medium text-slate-700">End Date</label><input type="date" id="end-date" value="${formatDate(endDate)}" class="mt-1 p-2 border border-slate-300 rounded-md"></div><button type="submit" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Generate Report</button></form></div><div id="payroll-report" class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500">Select a date range and click "Generate Report" to see payroll calculations.</p></div>`;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+
+            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Monthly Payroll Report</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><form id="payroll-form" class="flex flex-wrap items-end gap-4"><div><label for="month-picker" class="block text-sm font-medium text-slate-700">Select Month</label><input type="month" id="month-picker" value="${year}-${month}" class="mt-1 p-2 border border-slate-300 rounded-md"></div><button type="submit" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Generate Report</button></form></div><div id="payroll-report" class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500">Select a month and click "Generate Report" to see payroll calculations.</p></div>`;
+            
             document.getElementById('payroll-form').addEventListener('submit', async (e) => {
                  e.preventDefault();
-                 const start = new Date(document.getElementById('start-date').value);
-                 const end = new Date(document.getElementById('end-date').value);
-                 end.setHours(23, 59, 59, 999);
+                 const monthValue = document.getElementById('month-picker').value;
+                 const [startYear, startMonth] = monthValue.split('-').map(Number);
+                 const startDate = new Date(startYear, startMonth - 1, 1);
+                 const endDate = new Date(startYear, startMonth, 0, 23, 59, 59, 999);
+
                  const reportContainer = document.getElementById('payroll-report');
                  reportContainer.innerHTML = `<p class="text-center text-slate-500">Calculating... Please wait.</p>`;
-                 const reportData = await calculatePayroll(start, end);
+
+                 const reportData = await calculatePayroll(startDate, endDate);
                  if (Object.keys(reportData).length === 0) {
                      reportContainer.innerHTML = `<p class="text-center text-slate-500">No attendance data found for the selected period.</p>`;
                      return;
@@ -262,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      totalPayroll += laborer.paymentDue;
                      return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium">${laborer.name}</td><td class="py-4 px-6 text-center">${laborer.totalHours.toFixed(2)}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(laborer.rate)}</td><td class="py-4 px-6 text-right font-bold">${currencyFormatter.format(laborer.paymentDue)}</td></tr>`;
                  }).join('');
-                 reportContainer.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">Payroll Report</h3><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6">Laborer</th><th class="py-3 px-6 text-center">Total Hours</th><th class="py-3 px-6 text-center">Rate</th><th class="py-3 px-6 text-right">Payment Due</th></tr></thead><tbody>${tableRows}</tbody><tfoot><tr class="border-t-2 border-slate-300"><td colspan="3" class="py-4 px-6 font-bold text-right text-slate-600">Total Payroll</td><td class="py-4 px-6 font-bold text-right text-xl text-slate-800">${currencyFormatter.format(totalPayroll)}</td></tr></tfoot></table></div>`;
+                 reportContainer.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">Payroll for ${startDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6">Laborer</th><th class="py-3 px-6 text-center">Total Hours</th><th class="py-3 px-6 text-center">Rate</th><th class="py-3 px-6 text-right">Payment Due</th></tr></thead><tbody>${tableRows}</tbody><tfoot><tr class="border-t-2 border-slate-300"><td colspan="3" class="py-4 px-6 font-bold text-right text-slate-600">Total Payroll</td><td class="py-4 px-6 font-bold text-right text-xl text-slate-800">${currencyFormatter.format(totalPayroll)}</td></tr></tfoot></table></div>`;
             });
         };
         
@@ -289,9 +313,84 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        async function calculatePayroll(startDate, endDate) { /* ... full payroll calculation logic ... */ return {}; }
-        async function calculateLaborCostForSite(siteId, startDate, endDate) { /* ... full cost calculation logic ... */ return 0; }
-        function calculateExpenseCostForSite(siteId, startDate, endDate) { /* ... full cost calculation logic ... */ return 0; }
+        async function calculatePayroll(startDate, endDate) {
+            const q = query(collection(db, "attendance_logs"), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
+            const querySnapshot = await getDocs(q);
+            const logs = querySnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+            logs.sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+
+            const payrollData = {};
+
+            for (const laborer of laborersData) {
+                const laborerLogs = logs.filter(l => l.laborerId === laborer.id);
+                if (laborerLogs.length === 0) continue;
+
+                let totalHours = 0;
+                let clockInTime = null;
+
+                for (const log of laborerLogs) {
+                    if (log.action === 'Clocked In' && !clockInTime) {
+                        clockInTime = log.timestamp.toDate();
+                    } else if (log.action === 'Clocked Out' && clockInTime) {
+                        const clockOutTime = log.timestamp.toDate();
+                        const duration = (clockOutTime - clockInTime) / (1000 * 60 * 60); // duration in hours
+                        totalHours += duration;
+                        clockInTime = null; // Reset for next clock-in
+                    }
+                }
+                
+                if (totalHours > 0) {
+                    payrollData[laborer.id] = {
+                        name: laborer.name,
+                        totalHours: totalHours,
+                        rate: laborer.hourlyRate || 0,
+                        paymentDue: totalHours * (laborer.hourlyRate || 0)
+                    };
+                }
+            }
+            return payrollData;
+        }
+        
+        async function calculateLaborCostForSite(siteId, startDate, endDate) {
+            const q = query(collection(db, "attendance_logs"), where("siteId", "==", siteId), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
+            const querySnapshot = await getDocs(q);
+            const logs = querySnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+            logs.sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis());
+        
+            let totalCost = 0;
+            const laborersOnSite = [...new Set(logs.map(l => l.laborerId))];
+        
+            for (const laborerId of laborersOnSite) {
+                const laborer = laborersData.find(l => l.id === laborerId);
+                if (!laborer) continue;
+        
+                const laborerLogs = logs.filter(l => l.laborerId === laborerId);
+                let totalHours = 0;
+                let clockInTime = null;
+        
+                for (const log of laborerLogs) {
+                    if (log.action === 'Clocked In' && !clockInTime) {
+                        clockInTime = log.timestamp.toDate();
+                    } else if (log.action === 'Clocked Out' && clockInTime) {
+                        const clockOutTime = log.timestamp.toDate();
+                        const duration = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+                        totalHours += duration;
+                        clockInTime = null;
+                    }
+                }
+                totalCost += totalHours * (laborer.hourlyRate || 0);
+            }
+            return totalCost;
+        }
+
+        function calculateExpenseCostForSite(siteId, startDate, endDate) {
+            const start = startDate.toISOString().split('T')[0];
+            const end = endDate.toISOString().split('T')[0];
+
+            return expensesData
+                .filter(e => e.siteId === siteId && e.date >= start && e.date <= end)
+                .reduce((sum, e) => sum + (e.amount || 0), 0);
+        }
         
         const routes = {
             '#dashboard': renderDashboardPage, '#summary': renderProjectSummaryPage, '#tasks': renderDailyTasksPage, '#payroll': renderPayrollPage, '#sites': renderSitesPage, '#laborers': renderLaborersPage, '#expenses': renderExpensesPage, '#attendance': renderAttendanceLogPage
@@ -368,3 +467,4 @@ document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
     }
 });
+
