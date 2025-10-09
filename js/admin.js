@@ -26,15 +26,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginModal = document.getElementById('login-modal');
     const loginForm = document.getElementById('login-form');
     const dashboardContent = document.getElementById('dashboard-content');
+    let isAppInitialized = false;
 
     onAuthStateChanged(auth, user => {
         if (user) {
             loginModal.style.display = 'none';
             dashboardContent.style.display = 'block';
-            initializeDashboardApp();
+            if (!isAppInitialized) {
+                initializeDashboardApp();
+                isAppInitialized = true;
+            }
         } else {
             loginModal.style.display = 'flex';
             dashboardContent.style.display = 'none';
+            isAppInitialized = false; 
         }
     });
 
@@ -43,7 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const email = document.getElementById('email-input').value;
             const password = document.getElementById('password-input').value;
-            signInWithEmailAndPassword(auth, email, password).catch(() => { document.getElementById('login-error').textContent = 'Invalid email or password.'; });
+            signInWithEmailAndPassword(auth, email, password)
+                .catch(() => { 
+                    const loginError = document.getElementById('login-error');
+                    if(loginError) loginError.textContent = 'Invalid email or password.'; 
+                });
         });
     }
     
@@ -58,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <section id="laborers" class="page-content hidden"></section>
             <section id="expenses" class="page-content hidden"></section>
             <section id="attendance" class="page-content hidden"></section>
-            <div id="form-modal" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center hidden z-40"></div>
+            <div id="form-modal" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center hidden z-40 overflow-y-auto p-4"></div>
         `;
         document.getElementById('logout-btn').addEventListener('click', () => { signOut(auth); });
 
@@ -161,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const renderSitesPage = () => {
              const page = mainContent.querySelector('#sites');
              let tableRows = sitesData.map(site => `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium text-slate-800">${site.name}</td><td class="py-4 px-6 text-slate-600">${site.location}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-site" data-id="${site.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Site"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-site" data-id="${site.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Site"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
-             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Sites</h2><button id="add-site-btn" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Site</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Sites</h2><button id="add-site-btn" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Site</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
         const renderLaborersPage = () => {
@@ -170,14 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const siteName = sitesData.find(s => s.id === l.siteId)?.name || '<span class="text-slate-400">Not Assigned</span>';
                 return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium text-slate-800">${l.name}</td><td class="py-4 px-6">${siteName}</td><td class="py-4 px-6 text-slate-600">${l.mobileNumber || 'N/A'}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(l.hourlyRate || 0)}/hr</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-laborer" data-id="${l.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-laborer" data-id="${l.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`
             }).join('');
-            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Laborers</h2><button id="add-laborer-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Laborer</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Default Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile Number</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-center">Rate</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Laborers</h2><button id="add-laborer-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Laborer</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Default Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile Number</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-center">Rate</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
 
         const renderExpensesPage = () => {
              const page = mainContent.querySelector('#expenses');
              const sortedExpenses = [...expensesData].sort((a,b) => new Date(b.date) - new Date(a.date));
              let tableRows = sortedExpenses.map(e => `<tr class="border-b border-slate-200"><td class="py-4 px-6">${e.date}</td><td class="py-4 px-6">${sitesData.find(s=>s.id===e.siteId)?.name ||'N/A'}</td><td class="py-4 px-6">${e.description}</td><td class="py-4 px-6 text-right">${currencyFormatter.format(e.amount)}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-expense" data-id="${e.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-expense" data-id="${e.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
-             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Track Expenses</h2><button id="add-expense-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Expense</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Description</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Amount</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Track Expenses</h2><button id="add-expense-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Expense</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Description</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Amount</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
 
         const renderAttendanceLogPage = () => {
@@ -192,23 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `<tr class="border-b border-slate-200"><td class="py-4 px-6">${date} at ${time.toLowerCase()}</td><td class="py-4 px-6 font-medium">${log.laborerName || 'N/A'}</td><td class="py-4 px-6">${site}</td><td class="py-4 px-6 font-semibold ${statusClass}">${log.action}</td></tr>`;
             }).join('');
             if (sortedLogs.length === 0) { tableRows = `<tr><td colspan="4" class="text-center p-6 text-slate-500">No attendance records found yet.</td></tr>`; }
-            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Full Attendance Log</h2></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date & Time</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Laborer</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Action</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Full Attendance Log</h2></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date & Time</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Laborer</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Action</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
         const renderDailyTasksPage = () => {
             const page = mainContent.querySelector('#tasks');
             const siteOptions = sitesData.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
             page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Assign Daily Tasks</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><label for="task-site-select" class="block text-sm font-medium text-slate-700">Select a Site to View Laborers</label><select id="task-site-select" class="mt-1 block w-full md:w-1/2 p-3 border border-slate-300 rounded-md"><option value="">-- Select Site --</option>${siteOptions}</select></div><div id="task-assignment-list" class="bg-white p-6 rounded-xl shadow-lg hidden"></div>`;
-            const siteSelect = document.getElementById('task-site-select');
-            const taskListDiv = document.getElementById('task-assignment-list');
-            siteSelect.addEventListener('change', () => {
+            document.getElementById('task-site-select').addEventListener('change', () => {
+                const siteSelect = document.getElementById('task-site-select');
+                const taskListDiv = document.getElementById('task-assignment-list');
                 const selectedSiteId = siteSelect.value;
                 if (!selectedSiteId) {
                     taskListDiv.classList.add('hidden');
                     return;
                 }
                 const siteLaborers = laborersData.filter(l => l.siteId === selectedSiteId);
-                let laborerInputs = siteLaborers.map(l => `<div class="grid grid-cols-3 gap-4 items-center border-b border-slate-200 py-3"><label for="task-${l.id}" class="font-medium text-slate-800 col-span-1">${l.name}</label><input type="text" id="task-${l.id}" data-laborer-id="${l.id}" value="${l.currentTask || ''}" class="col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Optional: Enter task description..."></div>`).join('');
+                let laborerInputs = siteLaborers.map(l => `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center border-b border-slate-200 py-3"><label for="task-${l.id}" class="font-medium text-slate-800 col-span-1">${l.name}</label><input type="text" id="task-${l.id}" data-laborer-id="${l.id}" value="${l.currentTask || ''}" class="sm:col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Optional: Enter task description..."></div>`).join('');
                 if (siteLaborers.length === 0) {
                     laborerInputs = `<p class="text-center text-slate-500 py-4">No laborers assigned to this site.</p>`;
                 }
@@ -287,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const routes = {
             '#dashboard': renderDashboardPage, '#summary': renderProjectSummaryPage, '#tasks': renderDailyTasksPage, '#payroll': renderPayrollPage, '#sites': renderSitesPage, '#laborers': renderLaborersPage, '#expenses': renderExpensesPage, '#attendance': renderAttendanceLogPage
         };
+
         const renderCurrentPage = () => {
             const hash = window.location.hash || '#dashboard';
             mainContent.querySelectorAll('.page-content').forEach(c => c.classList.add('hidden'));
