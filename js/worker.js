@@ -237,15 +237,24 @@ function showDashboard(worker) {
     document.getElementById('dashboard-view').classList.remove('hidden');
     
     const t = translations[currentLanguage];
-    document.getElementById('worker-name').textContent = `${t.welcome}, ${worker.name}`;
+    const workerNameEl = document.getElementById('worker-name');
+    if (workerNameEl) {
+        workerNameEl.textContent = `${t.welcome}, ${worker.name}`;
+    }
     
-    document.getElementById('hourly-rate-display')?.textContent = `₹${worker.hourlyRate || 0}`;
+    const hourlyRateEl = document.getElementById('hourly-rate-display');
+    if (hourlyRateEl) {
+        hourlyRateEl.textContent = `₹${worker.hourlyRate || 0}`;
+    }
     
     if (worker.status === 'Work Started' && worker.currentSiteId) {
         const site = sitesData.find(s => s.id === worker.currentSiteId);
         if (site) {
-            const siteNameEl = document.getElementById('current-site-name')?.querySelector('span:last-child');
-            if (siteNameEl) siteNameEl.textContent = site.name;
+            const siteNameEl = document.getElementById('current-site-name');
+            if (siteNameEl) {
+                const spanEl = siteNameEl.querySelector('span:last-child');
+                if (spanEl) spanEl.textContent = site.name;
+            }
             workStartTime = new Date();
             updateUI(true);
             startTimer();
@@ -305,8 +314,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
-        const icon = document.querySelector('#dark-mode-toggle');
-        icon.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        const icon = document.getElementById('dark-mode-toggle');
+        if (icon) {
+            icon.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        }
     });
     
     document.getElementById('login-form')?.addEventListener('submit', async (e) => {
@@ -346,7 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('start-work-btn')?.addEventListener('click', async () => {
         if (!currentWorker) return;
         
-        const siteId = document.getElementById('site-select')?.value;
+        const siteSelect = document.getElementById('site-select');
+        const siteId = siteSelect?.value;
         if (!siteId) return;
         
         try {
@@ -363,8 +375,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentWorker.currentSiteId = siteId;
             
             const site = sitesData.find(s => s.id === siteId);
-            const siteNameEl = document.getElementById('current-site-name')?.querySelector('span:last-child');
-            if (siteNameEl) siteNameEl.textContent = site.name;
+            const siteNameEl = document.getElementById('current-site-name');
+            if (siteNameEl && site) {
+                const spanEl = siteNameEl.querySelector('span:last-child');
+                if (spanEl) spanEl.textContent = site.name;
+            }
             
             updateUI(true);
             startTimer();
@@ -387,11 +402,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const earnings = calculateEarnings(minutesWorked, currentWorker.hourlyRate || 0);
         const site = sitesData.find(s => s.id === currentWorker.currentSiteId);
         
-        document.getElementById('end-work-site')?.querySelector('span').textContent = site?.name || 'Unknown';
-        document.getElementById('end-work-hours').textContent = formatTime(minutesWorked);
-        document.getElementById('end-work-earnings').textContent = `₹${earnings}`;
+        const siteEl = document.getElementById('end-work-site');
+        const hoursEl = document.getElementById('end-work-hours');
+        const earningsEl = document.getElementById('end-work-earnings');
         
-        document.getElementById('end-work-modal')?.classList.remove('hidden');
+        if (siteEl) {
+            const spanEl = siteEl.querySelector('span');
+            if (spanEl) spanEl.textContent = site?.name || 'Unknown';
+        }
+        if (hoursEl) hoursEl.textContent = formatTime(minutesWorked);
+        if (earningsEl) earningsEl.textContent = `₹${earnings}`;
+        
+        const modal = document.getElementById('end-work-modal');
+        if (modal) modal.classList.remove('hidden');
     });
     
     document.getElementById('cancel-end-work-btn')?.addEventListener('click', () => {
@@ -402,6 +425,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentWorker) return;
         
         try {
+            const now = new Date();
+            const minutesWorked = (now - workStartTime) / (1000 * 60);
+            const earnings = calculateEarnings(minutesWorked, currentWorker.hourlyRate || 0);
+            const site = sitesData.find(s => s.id === currentWorker.currentSiteId);
+            
             await updateDoc(doc(db, 'laborers', currentWorker.id), {
                 status: 'Work Ended'
             });
@@ -410,8 +438,31 @@ document.addEventListener('DOMContentLoaded', () => {
             
             stopTimer();
             
-            document.getElementById('end-work-modal')?.classList.add('hidden');
-            document.getElementById('work-ended-modal')?.classList.remove('hidden');
+            const endModal = document.getElementById('end-work-modal');
+            if (endModal) endModal.classList.add('hidden');
+            
+            const successHoursEl = document.getElementById('success-hours');
+            const successEarningsEl = document.getElementById('success-earnings');
+            const successSiteEl = document.getElementById('success-site');
+            
+            if (successHoursEl) successHoursEl.textContent = formatTime(minutesWorked);
+            if (successEarningsEl) successEarningsEl.textContent = `₹${earnings}*`;
+            if (successSiteEl) successSiteEl.textContent = site?.name || 'Unknown';
+            
+            const encouragements = [
+                '🌟 Excellent work today!',
+                '💪 Keep up the great work!',
+                '👏 Another productive day!',
+                '🎯 Well done!',
+                '✨ Outstanding effort!',
+                '🏆 You\'re doing amazing!'
+            ];
+            const randomMsg = encouragements[Math.floor(Math.random() * encouragements.length)];
+            const encouragementEl = document.getElementById('encouragement-message');
+            if (encouragementEl) encouragementEl.textContent = randomMsg;
+            
+            const successModal = document.getElementById('work-ended-modal');
+            if (successModal) successModal.classList.remove('hidden');
             
         } catch (error) {
             console.error("Error ending work:", error);
