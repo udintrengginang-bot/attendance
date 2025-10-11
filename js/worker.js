@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -98,6 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (assignedSites.length > 0) {
             siteSelect.innerHTML = assignedSites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
             siteSelectionView.classList.remove('hidden');
+            startWorkBtn.disabled = false;
+            startWorkBtn.textContent = translations[currentLanguage].start_work;
         } else {
             siteSelect.innerHTML = `<option>${translations[currentLanguage].no_sites}</option>`;
             startWorkBtn.disabled = true;
@@ -115,7 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const createLog = async (action, siteId) => {
-       if(!currentWorker) return;
+       if(!currentWorker || !siteId) {
+           console.error("Cannot create log: Missing worker or siteId.", { currentWorker, siteId });
+           return;
+       };
        await addDoc(collection(db, "attendance_logs"), {
            laborerId: currentWorker.id,
            laborerName: currentWorker.name,
@@ -138,8 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loginError.textContent = 'Invalid mobile number or PIN.';
             } else {
                 const workerDoc = querySnapshot.docs[0];
-                currentWorker = { id: workerDoc.id, ...workerDoc.data() };
-                showDashboard(currentWorker);
+                showDashboard({ id: workerDoc.id, ...workerDoc.data() });
             }
         } catch (error) {
             console.error("Login query failed:", error);
@@ -152,9 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedSiteId = siteSelect.value;
         const newStatus = 'Work Started';
         const workerRef = doc(db, 'laborers', currentWorker.id);
+        
         await updateDoc(workerRef, { status: newStatus, currentSiteId: selectedSiteId });
         await createLog(newStatus, selectedSiteId);
+        
         currentWorker.status = newStatus;
+        currentWorker.currentSiteId = selectedSiteId; // IMPORTANT FIX
         updateStatusUI(newStatus);
     });
 
@@ -162,8 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentWorker) return;
         const newStatus = 'Work Ended';
         const workerRef = doc(db, 'laborers', currentWorker.id);
+        
         await updateDoc(workerRef, { status: newStatus });
-        await createLog(newStatus, currentWorker.currentSiteId);
+        await createLog(newStatus, currentWorker.currentSiteId); // IMPORTANT FIX
+        
         currentWorker.status = newStatus;
         updateStatusUI(newStatus);
     });
