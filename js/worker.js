@@ -504,6 +504,24 @@ function showLogin() {
 document.addEventListener('DOMContentLoaded', () => {
     setLanguage(currentLanguage);
     
+    // Dark mode toggle on LOGIN page
+    const darkModeToggleLogin = document.getElementById('dark-mode-toggle-login');
+    if (darkModeToggleLogin) {
+        // Load saved preference
+        const isDark = localStorage.getItem('shreeved-dark-mode') === 'true';
+        if (isDark) {
+            document.body.classList.add('dark-mode');
+            darkModeToggleLogin.textContent = '☀️';
+        }
+        
+        darkModeToggleLogin.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkNow = document.body.classList.contains('dark-mode');
+            darkModeToggleLogin.textContent = isDarkNow ? '☀️' : '🌙';
+            localStorage.setItem('shreeved-dark-mode', isDarkNow);
+        });
+    }
+    
     // Language switchers - LOGIN
     document.querySelectorAll('#language-switcher .lang-btn').forEach(btn => {
         btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
@@ -514,10 +532,10 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
     });
     
-    // Dark mode toggle
+    // Dark mode toggle on DASHBOARD
     const darkModeToggle = document.getElementById('dark-mode-toggle');
     if (darkModeToggle) {
-        // Load saved preference
+        // Sync with login dark mode setting
         const isDark = localStorage.getItem('shreeved-dark-mode') === 'true';
         if (isDark) {
             document.body.classList.add('dark-mode');
@@ -606,9 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI(true);
                 startTimer();
                 
-                // Show success message
-                const t = translations[currentLanguage];
-                alert(t.work_started);
+                // Don't show alert - removed annoying popup
                 
             } catch (error) {
                 console.error("Error starting work:", error);
@@ -706,16 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!selectedPhoto || !currentWorker) return;
             
             const t = translations[currentLanguage];
-            const description = document.getElementById('photo-description')?.value.trim();
+            const description = document.getElementById('photo-description')?.value.trim() || 'No description'; // Made optional
             const statusEl = document.getElementById('upload-status');
-            
-            if (!description) {
-                if (statusEl) {
-                    statusEl.textContent = 'Please add a description';
-                    statusEl.className = 'text-center text-sm font-semibold text-red-500';
-                }
-                return;
-            }
             
             try {
                 if (statusEl) {
