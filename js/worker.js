@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp, orderBy, getDoc, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
@@ -357,9 +357,7 @@ async function showDashboard(worker) {
         hourlyRateEl.textContent = `₹${worker.hourlyRate || 0}`;
     }
     
-    // Restore work state if exists
-    const hasRestoredState = restoreWorkState();
-    
+    // Check if worker is currently working
     if (worker.status === 'Work Started' && worker.currentSiteId) {
         const site = sitesData.find(s => s.id === worker.currentSiteId);
         if (site) {
@@ -369,10 +367,40 @@ async function showDashboard(worker) {
                 if (spanEl) spanEl.textContent = site.name;
             }
             
-            // If we didn't restore from localStorage, use current time
-            if (!hasRestoredState) {
-                workStartTime = new Date();
+            // FETCH ACTUAL START TIME FROM FIRESTORE
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const logsQuery = query(
+                    collection(db, 'attendance_logs'),
+                    where('laborerId', '==', worker.id),
+                    where('action', '==', 'Work Started'),
+                    where('timestamp', '>=', today),
+                    orderBy('timestamp', 'desc'),
+                    limit(1)
+                );
+                
+                const logsSnapshot = await getDocs(logsQuery);
+                
+                if (!logsSnapshot.empty) {
+                    const lastLog = logsSnapshot.docs[0].data();
+                    workStartTime = lastLog.timestamp.toDate();
+                    console.log('Restored work start time from Firestore:', workStartTime);
+                } else {
+                    // Fallback to current time if no log found
+                    workStartTime = new Date();
+                    console.log('No log found, using current time');
+                }
+                
                 saveWorkState();
+            } catch (error) {
+                console.error('Error fetching start time:', error);
+                // Try to restore from localStorage
+                const hasRestoredState = restoreWorkState();
+                if (!hasRestoredState) {
+                    workStartTime = new Date();
+                }
             }
             
             updateUI(true);
