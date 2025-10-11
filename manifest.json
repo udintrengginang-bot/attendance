@@ -1,12 +1,10 @@
 {
   "name": "Shreeved - Construction Management",
   "short_name": "Shreeved",
-  "description": "Construction site attendance and expense tracking system",
+  "description": "Construction site attendance and expense tracking",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#f59e0b",
-  "orientation": "portrait",
-  "icons": [],
-  "categories": ["business", "productivity"]
+  "orientation": "portrait"
 }
