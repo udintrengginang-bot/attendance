@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Active Workers</h3><p class="text-4xl font-bold text-slate-800 mt-2">${activeWorkers} / ${totalWorkers}</p></div>
                 <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Total Sites</h3><p class="text-4xl font-bold text-slate-800 mt-2">${sitesData.length}</p></div>
                 <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Payroll (This Month)</h3><p class="text-4xl font-bold text-slate-800 mt-2">${currencyFormatter.format(totalMonthlyPayroll)}</p></div>
-                 <div class="bg-white p-6 rounded-xl shadow-lg md:col-span-2 lg:col-span-3"><h3 class="font-medium text-slate-500">Month-to-Date Summary</h3><div class="flex justify-around mt-2"><div class="text-center"><p class="text-sm text-slate-500">Total Labor Cost</p><p class="text-2xl font-bold">${currencyFormatter.format(laborCost)}</p></div><div class="text-center"><p class="text-sm text-slate-500">Total Expenses</p><p class="text-2xl font-bold">${currencyFormatter.format(expenseCost)}</p></div><div class="text-center"><p class="text-sm text-slate-500">Total Project Cost</p><p class="text-2xl font-bold">${currencyFormatter.format(laborCost + expenseCost)}</p></div></div></div>
+                 <div class="bg-white p-6 rounded-xl shadow-lg md:col-span-2 lg:col-span-3"><h3 class="font-medium text-slate-500">Month-to-Date Summary</h3><div class="flex flex-wrap justify-around items-center mt-2 gap-4"><div class="text-center"><p class="text-sm text-slate-500">Total Labor Cost</p><p class="text-2xl font-bold">${currencyFormatter.format(laborCost)}</p></div><div class="text-center"><p class="text-sm text-slate-500">Total Expenses</p><p class="text-2xl font-bold">${currencyFormatter.format(expenseCost)}</p></div><div class="text-center"><p class="text-sm text-slate-500">Total Project Cost</p><p class="text-2xl font-bold text-amber-600">${currencyFormatter.format(laborCost + expenseCost)}</p></div></div></div>
             </div>`;
         };
 
@@ -165,13 +165,18 @@ document.addEventListener('DOMContentLoaded', () => {
             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Workers</h2><button data-action="add-laborer" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Worker</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Status</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
-        renderExpensesPage = () => {
+        const renderExpensesPage = () => {
              const page = mainContent.querySelector('#expenses');
              if(!page) return;
              const sortedExpenses = [...expensesData].sort((a,b) => new Date(b.date) - new Date(a.date));
              let tableRows = sortedExpenses.map(e => `<tr class="border-b border-slate-200 hover:bg-slate-50"><td class="py-4 px-6">${e.date}</td><td class="py-4 px-6">${sitesData.find(s=>s.id===e.siteId)?.name ||'N/A'}</td><td class="py-4 px-6">${e.description}</td><td class="py-4 px-6 text-right">${currencyFormatter.format(e.amount)}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-expense" data-id="${e.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-expense" data-id="${e.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
              page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Track Expenses</h2><button data-action="add-expense" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Expense</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Description</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Amount</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
+        
+        const renderProjectSummaryPage = async () => { /* ... full implementation will go here ... */ };
+        const renderDailyTasksPage = () => { /* ... full implementation will go here ... */ };
+        const renderPayrollPage = async () => { /* ... full implementation will go here ... */ };
+        const renderAttendanceLogPage = () => { /* ... full implementation will go here ... */ };
 
         const routes = {
             '#dashboard': renderDashboardPage,
@@ -262,4 +267,3 @@ document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
     }
 });
-
