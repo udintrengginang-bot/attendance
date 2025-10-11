@@ -3,176 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Construction site attendance and expense tracking system">
     <meta name="theme-color" content="#f59e0b">
     <title>Shreeved - Construction Management</title>
-    
-    <!-- PWA Tags -->
     <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .gradient-bg { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body class="bg-slate-50">
-    
-    <!-- Header -->
     <header class="gradient-bg text-white py-6 shadow-lg">
         <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H4zm10 10.5a.5.5 0 01-.5.5H6.5a.5.5 0 010-1H13.5a.5.5 0 01.5.5zm0-3a.5.5 0 01-.5.5H6.5a.5.5 0 010-1H13.5a.5.5 0 01.5.5zm-5-3a.5.5 0 01-.5.5H6.5a.5.5 0 010-1h2a.5.5 0 01.5.5z" clip-rule="evenodd" />
-                    </svg>
-                    <h1 class="text-3xl font-bold">Shreeved</h1>
-                </div>
-                <button id="install-btn" class="hidden bg-white text-amber-600 px-4 py-2 rounded-lg font-semibold hover:bg-amber-50 transition-colors">
-                    📱 Install App
-                </button>
-            </div>
+            <h1 class="text-3xl font-bold">Shreeved</h1>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="container mx-auto px-4 py-12">
-        
-        <!-- Hero Section -->
         <div class="text-center mb-16">
-            <h2 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">
-                Simple Construction Management
-            </h2>
-            <p class="text-xl text-slate-600 max-w-2xl mx-auto">
-                Track attendance, manage expenses, and handle payroll for your construction sites - all in one place.
-            </p>
+            <h2 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">Simple Construction Management</h2>
+            <p class="text-xl text-slate-600">Track attendance, manage payroll, and handle expenses - all in one place.</p>
         </div>
 
-        <!-- Cards -->
         <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            
-            <!-- Admin Card -->
-            <a href="/admin" class="card-hover block bg-white p-8 rounded-2xl shadow-lg">
+            <a href="/admin" class="block bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                 <div class="text-center">
                     <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                        </svg>
+                        <span class="text-5xl">👨‍💼</span>
                     </div>
                     <h3 class="text-2xl font-bold text-slate-800 mb-3">Admin Dashboard</h3>
-                    <p class="text-slate-600 mb-6">
-                        Manage workers, sites, expenses, and payroll. Full control of your construction business.
-                    </p>
-                    <div class="inline-flex items-center gap-2 bg-amber-500 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-amber-600 transition-colors">
-                        Admin Login
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
+                    <p class="text-slate-600 mb-6">Manage workers, sites, expenses, and payroll</p>
+                    <div class="inline-flex items-center gap-2 bg-amber-500 text-white px-8 py-4 rounded-lg font-bold text-lg">
+                        Admin Login →
                     </div>
                 </div>
             </a>
 
-            <!-- Worker Card -->
-            <a href="/worker" class="card-hover block bg-white p-8 rounded-2xl shadow-lg">
+            <a href="/worker" class="block bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                 <div class="text-center">
                     <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
-                        </svg>
+                        <span class="text-5xl">👷</span>
                     </div>
                     <h3 class="text-2xl font-bold text-slate-800 mb-3">Worker Portal</h3>
-                    <p class="text-slate-600 mb-6">
-                        Start work, end work, and track your daily hours. Simple and easy to use.
-                    </p>
-                    <div class="inline-flex items-center gap-2 bg-green-500 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-green-600 transition-colors">
-                        Worker Login
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
+                    <p class="text-slate-600 mb-6">Clock in/out and track your daily hours</p>
+                    <div class="inline-flex items-center gap-2 bg-green-500 text-white px-8 py-4 rounded-lg font-bold text-lg">
+                        Worker Login →
                     </div>
                 </div>
             </a>
-            
         </div>
-
-        <!-- Features -->
-        <div class="mt-20 max-w-4xl mx-auto">
-            <h3 class="text-2xl font-bold text-center text-slate-800 mb-10">Everything You Need</h3>
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="text-center p-6">
-                    <div class="text-4xl mb-3">⏱️</div>
-                    <h4 class="font-bold text-slate-800 mb-2">Time Tracking</h4>
-                    <p class="text-slate-600 text-sm">Accurate hours and earnings calculation</p>
-                </div>
-                <div class="text-center p-6">
-                    <div class="text-4xl mb-3">💰</div>
-                    <h4 class="font-bold text-slate-800 mb-2">Payroll Management</h4>
-                    <p class="text-slate-600 text-sm">Monthly reports with advances & deductions</p>
-                </div>
-                <div class="text-center p-6">
-                    <div class="text-4xl mb-3">📍</div>
-                    <h4 class="font-bold text-slate-800 mb-2">Site Management</h4>
-                    <p class="text-slate-600 text-sm">Track expenses across multiple sites</p>
-                </div>
-                <div class="text-center p-6">
-                    <div class="text-4xl mb-3">📸</div>
-                    <h4 class="font-bold text-slate-800 mb-2">Work Photos</h4>
-                    <p class="text-slate-600 text-sm">Document daily progress with photos</p>
-                </div>
-                <div class="text-center p-6">
-                    <div class="text-4xl mb-3">📱</div>
-                    <h4 class="font-bold text-slate-800 mb-2">Mobile First</h4>
-                    <p class="text-slate-600 text-sm">Works perfectly on any device</p>
-                </div>
-                <div class="text-center p-6">
-                    <div class="text-4xl mb-3">🌐</div>
-                    <h4 class="font-bold text-slate-800 mb-2">Multi-Language</h4>
-                    <p class="text-slate-600 text-sm">English, Hindi, and Marathi support</p>
-                </div>
-            </div>
-        </div>
-
     </main>
 
-    <!-- Footer -->
     <footer class="bg-slate-800 text-slate-400 py-8 mt-20">
         <div class="container mx-auto px-4 text-center">
             <p>&copy; 2025 Shreeved. All rights reserved.</p>
-            <p class="mt-2 text-sm">Simple construction management for small businesses</p>
         </div>
     </footer>
 
-    <!-- PWA Install Script -->
     <script>
-        let deferredPrompt;
-        const installBtn = document.getElementById('install-btn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBtn.classList.remove('hidden');
-        });
-
-        installBtn.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response: ${outcome}`);
-            deferredPrompt = null;
-            installBtn.classList.add('hidden');
-        });
-
-        // Register service worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(reg => console.log('Service Worker registered'))
-                .catch(err => console.log('Service Worker registration failed:', err));
+            navigator.serviceWorker.register('/service-worker.js');
         }
     </script>
-
 </body>
 </html>
