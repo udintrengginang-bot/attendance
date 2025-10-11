@@ -7,52 +7,117 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; font-size: 18px; }
-        .dark-mode { background-color: #1e293b; color: #f1f5f9; }
-        .dark-mode .card-bg { background-color: #334155; }
-        .dark-mode input, .dark-mode textarea, .dark-mode select { 
-            background-color: #334155; 
-            border-color: #475569; 
+        body { 
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        
+        /* Dark Mode - Applied to entire body */
+        body.dark-mode { 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             color: #f1f5f9;
         }
-        .lang-btn.active, .lang-btn-dash.active { 
-            background-color: #10b981; 
-            color: white; 
+        
+        body.dark-mode .card-bg { 
+            background-color: #1e293b;
+            border: 1px solid #334155;
+        }
+        
+        body.dark-mode input, 
+        body.dark-mode textarea, 
+        body.dark-mode select { 
+            background-color: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+        
+        body.dark-mode .text-slate-800,
+        body.dark-mode .text-slate-600 {
+            color: #f1f5f9 !important;
+        }
+        
+        body.dark-mode .bg-slate-50 {
+            background-color: #1e293b !important;
+        }
+        
+        /* Language button active state */
+        .lang-btn.active { 
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 600;
+        }
+        
+        /* Medium-sized responsive buttons */
+        .btn-medium {
+            padding: 0.875rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        @media (min-width: 768px) {
+            .btn-medium {
+                padding: 1rem 2rem;
+                font-size: 1.125rem;
+            }
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        
+        /* New color scheme - Teal/Emerald */
+        .gradient-primary {
+            background: linear-gradient(135deg, #14b8a6 0%, #10b981 100%);
+        }
+        
+        .gradient-secondary {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        }
+        
+        .gradient-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50">
 
     <!-- Login View -->
     <div id="login-view" class="flex items-center justify-center min-h-screen p-4">
-        <div class="card-bg bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="card-bg bg-white p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <div id="language-switcher" class="flex justify-center gap-2 mb-6">
-                <button class="lang-btn px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300 transition-colors" data-lang="en">English</button>
-                <button class="lang-btn px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300 transition-colors" data-lang="hi">हिन्दी</button>
-                <button class="lang-btn px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300 transition-colors" data-lang="mr">मराठी</button>
+                <button data-lang="en" class="lang-btn px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300">English</button>
+                <button data-lang="hi" class="lang-btn px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300">हिन्दी</button>
+                <button data-lang="mr" class="lang-btn px-4 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300">मराठी</button>
             </div>
 
             <div class="text-center mb-8">
-                <h1 class="text-4xl font-bold text-slate-800 mb-2">Shreeved</h1>
-                <p class="text-slate-600 text-lg">Worker Portal</p>
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-2">Shreeved</h1>
+                <p data-translate="worker_portal" class="text-slate-600 text-lg">Worker Portal</p>
             </div>
 
             <form id="login-form" class="space-y-6">
                 <div>
-                    <input type="tel" id="mobile-number" pattern="[0-9]{10}" maxlength="10" class="w-full p-4 text-xl text-center border-2 border-slate-300 rounded-lg focus:border-green-500 focus:outline-none" placeholder="9876543210" required>
+                    <input type="tel" id="mobile-number" pattern="[0-9]{10}" maxlength="10" 
+                           data-translate-placeholder="placeholder_mobile"
+                           class="w-full p-4 text-xl text-center border-2 border-slate-300 rounded-lg focus:border-teal-500 focus:outline-none" 
+                           placeholder="9876543210" required>
                 </div>
                 <div>
-                    <input type="password" id="pin" pattern="[0-9]{4}" maxlength="4" inputmode="numeric" class="w-full p-4 text-xl text-center border-2 border-slate-300 rounded-lg focus:border-green-500 focus:outline-none" placeholder="1234" required>
+                    <input type="password" id="pin" pattern="[0-9]{4}" maxlength="4" inputmode="numeric" 
+                           data-translate-placeholder="placeholder_pin"
+                           class="w-full p-4 text-xl text-center border-2 border-slate-300 rounded-lg focus:border-teal-500 focus:outline-none" 
+                           placeholder="1234" required>
                 </div>
-                <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg transition-colors">Login</button>
+                <button type="submit" data-translate="login" class="w-full gradient-primary hover:opacity-90 text-white font-bold py-4 rounded-xl shadow-lg">Login</button>
                 <p id="login-error" class="text-red-500 text-center font-semibold min-h-[24px]"></p>
             </form>
 
             <div class="mt-6 text-center text-slate-600">
-                <p class="mb-2">Need help?</p>
+                <p data-translate="need_help" class="mb-2">Need help?</p>
                 <div class="flex justify-center gap-4">
-                    <a href="tel:+918433650682" class="text-blue-600 font-semibold hover:underline">📞 Call Ajit</a>
-                    <a href="https://wa.me/918433650682" target="_blank" class="text-green-600 font-semibold hover:underline">💬 WhatsApp</a>
+                    <a href="tel:+918433650682" class="text-teal-600 font-semibold hover:underline">📞 <span data-translate="call_ajit">Call Ajit</span></a>
+                    <a href="https://wa.me/918433650682" target="_blank" class="text-emerald-600 font-semibold hover:underline">💬 WhatsApp</a>
                 </div>
                 <p class="text-sm mt-2">84336 50682</p>
             </div>
@@ -61,70 +126,88 @@
 
     <!-- Dashboard View -->
     <div id="dashboard-view" class="hidden min-h-screen">
-        <header class="bg-green-500 text-white p-4 shadow-lg sticky top-0 z-10">
-            <div class="flex items-center justify-between max-w-4xl mx-auto">
+        <header class="gradient-primary text-white p-4 shadow-lg sticky top-0 z-10">
+            <div class="flex items-center justify-between max-w-6xl mx-auto">
                 <div>
-                    <h2 id="worker-name" class="text-2xl font-bold"></h2>
+                    <h2 id="worker-name" class="text-xl md:text-2xl font-bold"></h2>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button id="dark-mode-toggle" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors">🌙</button>
-                    <button id="logout-btn" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors">🚪</button>
+                <div class="flex items-center gap-2 md:gap-3">
+                    <div id="language-switcher-dashboard" class="flex gap-1 border-2 border-white border-opacity-30 rounded-lg p-1">
+                        <button data-lang="en" class="lang-btn-dash text-xs font-bold py-1 px-2 rounded text-white hover:bg-white hover:bg-opacity-20">EN</button>
+                        <button data-lang="hi" class="lang-btn-dash text-xs font-bold py-1 px-2 rounded text-white hover:bg-white hover:bg-opacity-20">HI</button>
+                        <button data-lang="mr" class="lang-btn-dash text-xs font-bold py-1 px-2 rounded text-white hover:bg-white hover:bg-opacity-20">MR</button>
+                    </div>
+                    <button id="dark-mode-toggle" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30">🌙</button>
+                    <button id="logout-btn" class="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30">🚪</button>
                 </div>
             </div>
         </header>
 
-        <main class="max-w-4xl mx-auto p-4 pb-24">
+        <main class="max-w-6xl mx-auto p-4 md:p-6 pb-24">
+            <!-- Task Card -->
+            <div id="task-card" class="hidden card-bg bg-white rounded-xl p-4 md:p-6 mb-6 shadow-lg">
+                <div class="flex items-start gap-3">
+                    <span class="text-3xl">📋</span>
+                    <div class="flex-1">
+                        <h3 data-translate="todays_task" class="font-bold text-lg md:text-xl mb-2 text-teal-700">Today's Task</h3>
+                        <p id="task-description" class="text-slate-700 text-base md:text-lg"></p>
+                        <p data-translate="from_ajit" class="text-teal-600 text-sm mt-2">From Ajit</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Site Selection -->
-            <div id="site-selection-view" class="card-bg bg-white rounded-xl p-6 shadow-lg mb-6">
-                <label class="block font-bold text-xl mb-3">📍 Where are you today?</label>
-                <select id="site-select" class="w-full p-4 text-lg border-2 border-slate-300 rounded-lg focus:border-green-500 focus:outline-none">
+            <div id="site-selection-view" class="card-bg bg-white rounded-xl p-4 md:p-6 shadow-lg mb-6">
+                <label data-translate="select_site" class="block font-bold text-lg md:text-xl mb-3 text-slate-800">📍 Where are you today?</label>
+                <select id="site-select" class="w-full p-3 md:p-4 text-base md:text-lg border-2 border-slate-300 rounded-lg focus:border-teal-500 focus:outline-none">
                     <option>Loading sites...</option>
                 </select>
             </div>
 
             <!-- Working Status -->
-            <div id="working-status-card" class="hidden card-bg bg-white rounded-xl p-6 shadow-lg mb-6">
+            <div id="working-status-card" class="hidden card-bg bg-white rounded-xl p-4 md:p-6 shadow-lg mb-6">
                 <div class="text-center mb-4">
-                    <p class="text-slate-600 mb-1">Working today at:</p>
-                    <p id="current-site-name" class="text-2xl font-bold flex items-center justify-center gap-2">
+                    <p data-translate="working_at" class="text-slate-600 mb-1">Working today at:</p>
+                    <p id="current-site-name" class="text-xl md:text-2xl font-bold flex items-center justify-center gap-2 text-slate-800">
                         <span>📍</span><span></span>
                     </p>
                 </div>
 
                 <!-- Timer -->
-                <div class="bg-gradient-to-br from-green-400 to-green-600 rounded-2xl p-8 text-white text-center mb-6">
-                    <p class="text-lg mb-2">⏱️ Working</p>
-                    <p id="timer-display" class="text-6xl font-bold">0:00</p>
+                <div class="gradient-primary rounded-2xl p-6 md:p-8 text-white text-center mb-6">
+                    <p data-translate="working_time" class="text-base md:text-lg mb-2">⏱️ Working</p>
+                    <p id="timer-display" class="text-5xl md:text-6xl font-bold">0:00</p>
+                    <p class="text-sm mt-2 opacity-90">hours : minutes</p>
                 </div>
 
                 <!-- Earnings -->
-                <div class="bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl p-6 text-white text-center">
-                    <p class="text-lg mb-2">💰 Today's Earnings</p>
-                    <p id="earnings-display" class="text-5xl font-bold">₹0</p>
+                <div class="gradient-secondary rounded-2xl p-4 md:p-6 text-white text-center">
+                    <p data-translate="todays_earnings" class="text-base md:text-lg mb-2">💰 Today's Earnings</p>
+                    <p id="earnings-display" class="text-4xl md:text-5xl font-bold">₹0</p>
                     <p class="text-sm mt-3 opacity-90">Hourly Rate: <span id="hourly-rate-display">₹0</span>/hr</p>
                     <p class="text-xs mt-2 opacity-75">* Pay can be modified. Contact Ajit</p>
                 </div>
             </div>
 
             <!-- Work History -->
-            <div id="work-history-card" class="hidden card-bg bg-white rounded-xl p-6 shadow-lg mb-6">
-                <h3 class="text-xl font-bold mb-4">Last 7 Days</h3>
+            <div id="work-history-card" class="hidden card-bg bg-white rounded-xl p-4 md:p-6 shadow-lg mb-6">
+                <h3 data-translate="work_history" class="text-lg md:text-xl font-bold mb-4 text-slate-800">Last 7 Days</h3>
                 <div id="history-list" class="space-y-3"></div>
             </div>
 
             <!-- Action Buttons -->
             <div class="space-y-4 mb-6">
-                <button id="start-work-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-6 rounded-xl shadow-lg text-2xl flex items-center justify-center gap-3 transition-colors">
-                    <span class="text-3xl">🟢</span>
-                    <span>START WORK</span>
+                <button id="start-work-btn" class="btn-medium w-full gradient-primary hover:opacity-90 text-white rounded-xl shadow-lg flex items-center justify-center gap-3">
+                    <span class="text-2xl md:text-3xl">🟢</span>
+                    <span data-translate="start_work">START WORK</span>
                 </button>
-                <button id="upload-photo-btn" class="hidden w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-6 rounded-xl shadow-lg text-2xl flex items-center justify-center gap-3 transition-colors">
-                    <span class="text-3xl">📸</span>
-                    <span>Upload Photo</span>
+                <button id="upload-photo-btn" class="btn-medium hidden w-full gradient-secondary hover:opacity-90 text-white rounded-xl shadow-lg flex items-center justify-center gap-3">
+                    <span class="text-2xl md:text-3xl">📸</span>
+                    <span data-translate="upload_photo">Upload Photo</span>
                 </button>
-                <button id="end-work-btn" class="hidden w-full bg-red-500 hover:bg-red-600 text-white font-bold py-6 rounded-xl shadow-lg text-2xl flex items-center justify-center gap-3 transition-colors">
-                    <span class="text-3xl">🛑</span>
-                    <span>END WORK</span>
+                <button id="end-work-btn" class="btn-medium hidden w-full gradient-danger hover:opacity-90 text-white rounded-xl shadow-lg flex items-center justify-center gap-3">
+                    <span class="text-2xl md:text-3xl">🛑</span>
+                    <span data-translate="end_work">END WORK</span>
                 </button>
             </div>
         </main>
@@ -132,8 +215,8 @@
 
     <!-- Photo Upload Modal -->
     <div id="photo-upload-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 class="text-2xl font-bold mb-4">📷 Upload Work Photo</h3>
+        <div class="card-bg bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 data-translate="upload_work_photo" class="text-xl md:text-2xl font-bold mb-4 text-slate-800">📷 Upload Work Photo</h3>
             
             <div id="photo-preview-container" class="hidden mb-4">
                 <img id="photo-preview" class="w-full h-64 object-cover rounded-lg" alt="Preview">
@@ -142,80 +225,84 @@
             <input type="file" id="photo-input" accept="image/*" class="hidden">
             
             <div class="grid grid-cols-2 gap-3 mb-4">
-                <button id="camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-lg transition-colors">
-                    📷 Camera
+                <button id="camera-btn" class="btn-medium gradient-primary hover:opacity-90 text-white rounded-lg flex items-center justify-center gap-2">
+                    <span class="text-xl">📷</span>
+                    <span data-translate="take_photo">Camera</span>
                 </button>
-                <button id="gallery-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 rounded-lg transition-colors">
-                    🖼️ Gallery
+                <button id="gallery-btn" class="btn-medium bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white rounded-lg flex items-center justify-center gap-2">
+                    <span class="text-xl">🖼️</span>
+                    <span data-translate="gallery">Gallery</span>
                 </button>
             </div>
             
-            <textarea id="photo-description" class="w-full p-3 border-2 border-slate-300 rounded-lg mb-4 focus:border-blue-500 focus:outline-none" rows="3" placeholder="What did you work on today?"></textarea>
+            <textarea id="photo-description" data-translate-placeholder="placeholder_description" 
+                      class="w-full p-3 border-2 border-slate-300 rounded-lg mb-4 focus:border-teal-500 focus:outline-none" 
+                      rows="3" placeholder="What did you work on today?"></textarea>
             
             <p id="upload-status" class="text-center text-sm font-semibold mb-4 min-h-[20px]"></p>
             
             <div class="flex gap-3">
-                <button id="cancel-photo-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 font-bold py-3 rounded-lg transition-colors">Cancel</button>
-                <button id="upload-photo-submit-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors" disabled>Upload</button>
+                <button id="cancel-photo-btn" data-translate="cancel" class="flex-1 bg-slate-200 hover:bg-slate-300 font-bold py-3 rounded-lg">Cancel</button>
+                <button id="upload-photo-submit-btn" data-translate="upload" class="flex-1 gradient-primary hover:opacity-90 text-white font-bold py-3 rounded-lg" disabled>Upload</button>
             </div>
         </div>
     </div>
 
-    <!-- End Work Confirmation Modal -->
+    <!-- End Work Modal -->
     <div id="end-work-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 class="text-2xl font-bold mb-6 text-center">⚠️ End Your Work Day?</h3>
+        <div class="card-bg bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 data-translate="end_work_confirm" class="text-xl md:text-2xl font-bold mb-6 text-center text-slate-800">⚠️ End Your Work Day?</h3>
             
             <div class="space-y-4 mb-6">
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span class="font-semibold">Site:</span>
-                    <span id="end-work-site">📍 <span></span></span>
+                <div class="flex justify-between items-center p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold text-slate-800">Site:</span>
+                    <span id="end-work-site" class="text-slate-800">📍 <span></span></span>
                 </div>
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span class="font-semibold">Total Time:</span>
-                    <span id="end-work-hours" class="font-bold text-green-600">0:00</span>
+                <div class="flex justify-between items-center p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold text-slate-800">Total Time:</span>
+                    <span id="end-work-hours" class="font-bold text-teal-600">0:00</span>
                 </div>
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                    <span class="font-semibold">Earnings:</span>
-                    <span id="end-work-earnings" class="font-bold text-amber-600">₹0</span>
+                <div class="flex justify-between items-center p-3 bg-teal-50 rounded-lg">
+                    <span class="font-semibold text-slate-800">Earnings:</span>
+                    <span id="end-work-earnings" class="font-bold text-emerald-600">₹0</span>
                 </div>
             </div>
             
             <p class="text-xs text-slate-500 text-center mb-6">* Final pay confirmed by Ajit at month-end</p>
             
             <div class="flex gap-3">
-                <button id="cancel-end-work-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 font-bold py-3 rounded-lg transition-colors">Keep Working</button>
-                <button id="confirm-end-work-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg transition-colors">End Work</button>
+                <button id="cancel-end-work-btn" data-translate="keep_working" class="flex-1 bg-slate-200 hover:bg-slate-300 font-bold py-3 rounded-lg">Keep Working</button>
+                <button id="confirm-end-work-btn" data-translate="yes_end_work" class="flex-1 gradient-danger hover:opacity-90 text-white font-bold py-3 rounded-lg">End Work</button>
             </div>
         </div>
     </div>
 
-    <!-- Work Ended Success Modal -->
+    <!-- Success Modal -->
     <div id="work-ended-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center">
+        <div class="card-bg bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center">
             <div class="text-6xl mb-4">✅</div>
-            <h3 class="text-3xl font-bold mb-4">Work Day Ended!</h3>
+            <h3 data-translate="work_ended" class="text-2xl md:text-3xl font-bold mb-4 text-slate-800">Work Day Ended!</h3>
             
-            <p id="encouragement-message" class="text-xl text-green-600 font-semibold mb-6">🌟 Excellent work today!</p>
+            <p id="encouragement-message" class="text-lg md:text-xl text-teal-600 font-semibold mb-6">🌟 Excellent work today!</p>
             
             <div class="space-y-3 mb-6">
-                <div class="p-4 bg-slate-50 rounded-lg">
-                    <p class="text-sm text-slate-600 mb-1">You worked:</p>
-                    <p id="success-hours" class="text-2xl font-bold text-green-600">0:00</p>
+                <div class="p-4 bg-teal-50 rounded-lg">
+                    <p data-translate="you_worked" class="text-sm text-slate-600 mb-1">You worked:</p>
+                    <p id="success-hours" class="text-2xl font-bold text-teal-600">0:00</p>
                 </div>
-                <div class="p-4 bg-slate-50 rounded-lg">
-                    <p class="text-sm text-slate-600 mb-1">You earned:</p>
-                    <p id="success-earnings" class="text-2xl font-bold text-amber-600">₹0*</p>
+                <div class="p-4 bg-emerald-50 rounded-lg">
+                    <p data-translate="you_earned" class="text-sm text-slate-600 mb-1">You earned:</p>
+                    <p id="success-earnings" class="text-2xl font-bold text-emerald-600">₹0*</p>
                 </div>
-                <div class="p-4 bg-slate-50 rounded-lg">
+                <div class="p-4 bg-cyan-50 rounded-lg">
                     <p class="text-sm text-slate-600 mb-1">Site:</p>
-                    <p id="success-site" class="text-lg font-semibold">Unknown</p>
+                    <p id="success-site" class="text-lg font-semibold text-slate-800">Unknown</p>
                 </div>
             </div>
             
-            <p class="text-slate-600 mb-6">See you tomorrow! 👋</p>
+            <p data-translate="see_you_tomorrow" class="text-slate-600 mb-6">See you tomorrow! 👋</p>
             
-            <button id="close-success-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors">Close</button>
+            <button id="close-success-btn" data-translate="close" class="w-full gradient-primary hover:opacity-90 text-white font-bold py-3 rounded-lg">Close</button>
         </div>
     </div>
 
