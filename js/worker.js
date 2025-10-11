@@ -114,27 +114,38 @@ document.addEventListener('DOMContentLoaded', () => {
         loginView.classList.remove('hidden');
         dashboardView.classList.add('hidden');
         loginForm.reset();
+        if (loginError) loginError.textContent = '';
     };
     
     const createLog = async (action, siteId) => {
        if(!currentWorker || !siteId) {
            console.error("Cannot create log: Missing worker or siteId.", { currentWorker, siteId });
            return;
-       };
-       await addDoc(collection(db, "attendance_logs"), {
-           laborerId: currentWorker.id,
-           laborerName: currentWorker.name,
-           action: action,
-           siteId: siteId,
-           timestamp: serverTimestamp()
-       });
+       }
+       try {
+           await addDoc(collection(db, "attendance_logs"), {
+               laborerId: currentWorker.id,
+               laborerName: currentWorker.name,
+               action: action,
+               siteId: siteId,
+               timestamp: serverTimestamp()
+           });
+       } catch (error) {
+           console.error("Error creating attendance log:", error);
+           alert("Error recording attendance. Please try again.");
+       }
     };
     
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         loginError.textContent = '';
-        const mobileNumber = document.getElementById('mobile-number').value;
-        const pin = document.getElementById('pin').value;
+        const mobileNumber = document.getElementById('mobile-number').value.trim();
+        const pin = document.getElementById('pin').value.trim();
+        
+        if (mobileNumber.length !== 10 || pin.length !== 4) {
+            loginError.textContent = 'Please enter valid 10-digit mobile and 4-digit PIN.';
+            return;
+        }
         
         const q = query(collection(db, 'laborers'), where('mobileNumber', '==', mobileNumber), where('pin', '==', pin));
         try {
@@ -153,28 +164,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startWorkBtn.addEventListener('click', async () => {
         if (!currentWorker || !siteSelect.value) return;
+        
         const selectedSiteId = siteSelect.value;
         const newStatus = 'Work Started';
         const workerRef = doc(db, 'laborers', currentWorker.id);
         
-        await updateDoc(workerRef, { status: newStatus, currentSiteId: selectedSiteId });
-        await createLog(newStatus, selectedSiteId);
-        
-        currentWorker.status = newStatus;
-        currentWorker.currentSiteId = selectedSiteId; // IMPORTANT FIX
-        updateStatusUI(newStatus);
+        try {
+            // Update worker status in Firestore
+            await updateDoc(workerRef, { 
+                status: newStatus, 
+                currentSiteId: selectedSiteId 
+            });
+            
+            // Create attendance log
+            await createLog(newStatus, selectedSiteId);
+            
+            // Update local worker object
+            currentWorker.status = newStatus;
+            currentWorker.currentSiteId = selectedSiteId;
+            
+            // Update UI
+            updateStatusUI(newStatus);
+            
+            console.log("Work started successfully!");
+        } catch (error) {
+            console.error("Error starting work:", error);
+            alert("Error starting work. Please try again.");
+        }
     });
 
     endWorkBtn.addEventListener('click', async () => {
         if (!currentWorker) return;
+        
         const newStatus = 'Work Ended';
         const workerRef = doc(db, 'laborers', currentWorker.id);
         
-        await updateDoc(workerRef, { status: newStatus });
-        await createLog(newStatus, currentWorker.currentSiteId); // IMPORTANT FIX
+        // Make sure we have the current site ID
+        if (!currentWorker.currentSiteId) {
+            console.error("No current site ID found");
+            alert("Error: No active site found. Please contact admin.");
+            return;
+        }
         
-        currentWorker.status = newStatus;
-        updateStatusUI(newStatus);
+        try {
+            // Update worker status in Firestore
+            await updateDoc(workerRef, { status: newStatus });
+            
+            // Create attendance log with the site they were working at
+            await createLog(newStatus, currentWorker.currentSiteId);
+            
+            // Update local worker object
+            currentWorker.status = newStatus;
+            
+            // Update UI
+            updateStatusUI(newStatus);
+            
+            console.log("Work ended successfully!");
+        } catch (error) {
+            console.error("Error ending work:", error);
+            alert("Error ending work. Please try again.");
+        }
     });
 
     logoutBtn.addEventListener('click', showLogin);
@@ -186,17 +235,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setLanguage(currentLanguage);
 
+    // Initialize Firebase Auth and load sites data
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             try {
                 const sitesSnapshot = await getDocs(collection(db, 'sites'));
                 sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Sites loaded:", sitesData.length);
             } catch (error) {
                 console.error("Error fetching sites:", error);
-                document.body.innerHTML = "Error loading application data. Please refresh the page."
+                alert("Error loading application data. Please refresh the page.");
             }
         } else {
-            signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+            // Sign in anonymously for workers
+            signInAnonymously(auth).catch(err => {
+                console.error("Anonymous sign-in failed:", err);
+                alert("Error connecting to server. Please refresh the page.");
+            });
         }
     });
 });
