@@ -66,6 +66,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
+    // Skip POST, PUT, DELETE requests - only cache GET requests
+    if (event.request.method !== 'GET') {
+        return;
+    }
+    
     // For navigation requests
     if (event.request.mode === 'navigate') {
         event.respondWith(
@@ -80,18 +85,20 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // For all other requests - network first, cache fallback
+    // For all other GET requests - network first, cache fallback
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                // Clone the response
-                const responseToCache = response.clone();
-                
-                // Cache successful responses
-                if (response.status === 200) {
+                // Only cache successful GET responses
+                if (response && response.status === 200 && event.request.method === 'GET') {
+                    const responseToCache = response.clone();
+                    
                     caches.open(CACHE_NAME)
                         .then(cache => {
-                            cache.put(event.request, responseToCache);
+                            cache.put(event.request, responseToCache).catch(err => {
+                                // Silently fail if PUT fails
+                                console.warn('[Service Worker] Failed to cache:', event.request.url);
+                            });
                         });
                 }
                 
