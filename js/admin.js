@@ -64,14 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <section id="tasks" class="page-content hidden"></section>
             <section id="payroll" class="page-content hidden"></section>
             <section id="sites" class="page-content hidden"></section>
-            <section id="laborers" class="page-content hidden"></section>
+            <section id="workers" class="page-content hidden"></section>
             <section id="expenses" class="page-content hidden"></section>
             <section id="attendance" class="page-content hidden"></section>
             <div id="form-modal" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center hidden z-40 overflow-y-auto p-4"></div>
         `;
         document.getElementById('logout-btn').addEventListener('click', () => { signOut(auth); });
 
-        let sitesData = [], laborersData = [], expensesData = [], attendanceLogData = [];
+        let sitesData = [], workersData = [], expensesData = [], attendanceLogData = [];
         const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
 
         const showConfirmationModal = (message, onConfirm) => {
@@ -98,18 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmHandler = () => {
                 onConfirm();
                 close();
-                confirmBtn.removeEventListener('click', confirmHandler);
-                cancelBtn.removeEventListener('click', cancelHandler);
             };
         
             const cancelHandler = () => {
                 close();
-                confirmBtn.removeEventListener('click', confirmHandler);
-                cancelBtn.removeEventListener('click', cancelHandler);
             };
         
-            confirmBtn.addEventListener('click', confirmHandler);
-            cancelBtn.addEventListener('click', cancelHandler);
+            confirmBtn.addEventListener('click', confirmHandler, { once: true });
+            cancelBtn.addEventListener('click', cancelHandler, { once: true });
         };
 
         const openSiteModal = (site = {}) => {
@@ -122,15 +118,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 const id = document.getElementById('site-id').value;
                 const data = { name: document.getElementById('site-name').value, location: document.getElementById('site-location').value };
-                if (id) { await updateDoc(doc(db, 'sites', id), data); } else { await addDoc(collection(db, 'sites'), data); }
-                modal.classList.add('hidden');
+                try {
+                    if (id) { await updateDoc(doc(db, 'sites', id), data); } else { await addDoc(collection(db, 'sites'), data); }
+                    modal.classList.add('hidden');
+                } catch (error) {
+                    console.error("Error saving site:", error);
+                    alert("Error saving site. Check console for details.");
+                }
             });
         };
         
-        const openLaborerModal = (laborer = {}) => {
-            const isEditing = !!laborer.id;
+        const openWorkerModal = (worker = {}) => {
+            const isEditing = !!worker.id;
             const modal = document.getElementById('form-modal');
-            const assignedSites = laborer.assignedSiteIds || [];
+            const assignedSites = worker.assignedSiteIds || [];
             const siteCheckboxes = sitesData.map(s => `
                 <div class="flex items-center">
                     <input type="checkbox" id="site-${s.id}" value="${s.id}" class="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500" ${assignedSites.includes(s.id) ? 'checked' : ''}>
@@ -138,25 +139,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `).join('');
 
-            modal.innerHTML = `<div class="bg-white rounded-lg shadow-xl w-full max-w-md m-4"><div class="p-6 border-b"><h3 class="text-2xl font-bold">${isEditing ? 'Edit Laborer' : 'Add New Laborer'}</h3></div><form id="laborer-form" class="p-6 space-y-4"><input type="hidden" id="laborer-id" value="${laborer.id || ''}"><div><label for="laborer-name" class="font-medium text-slate-700">Full Name</label><input type="text" id="laborer-name" value="${laborer.name || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="space-y-2">
+            modal.innerHTML = `<div class="bg-white rounded-lg shadow-xl w-full max-w-md m-4"><div class="p-6 border-b"><h3 class="text-2xl font-bold">${isEditing ? 'Edit Worker' : 'Add New Worker'}</h3></div><form id="worker-form" class="p-6 space-y-4"><input type="hidden" id="worker-id" value="${worker.id || ''}"><div><label for="worker-name" class="font-medium text-slate-700">Full Name</label><input type="text" id="worker-name" value="${worker.name || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="space-y-2">
             <label class="font-medium text-slate-700">Assign Sites</label>
             <div class="p-2 border border-slate-300 rounded-md max-h-32 overflow-y-auto space-y-2">${siteCheckboxes}</div>
-            </div><div><label for="laborer-mobile" class="font-medium text-slate-700">Mobile Number (10 Digits)</label><input type="tel" id="laborer-mobile" value="${laborer.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-pin" class="font-medium text-slate-700">4-Digit PIN</label><input type="text" id="laborer-pin" value="${laborer.pin || ''}" pattern="[0-9]{4}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="laborer-rate" class="font-medium text-slate-700">Hourly Rate (₹)</label><input type="number" id="laborer-rate" value="${laborer.hourlyRate || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="flex justify-end gap-4 pt-4"><button type="button" class="modal-cancel-btn px-4 py-2 rounded bg-slate-200">Cancel</button><button type="submit" class="px-4 py-2 rounded bg-amber-500 font-semibold">${isEditing ? 'Update' : 'Save'}</button></div></form></div>`;
+            </div><div><label for="worker-mobile" class="font-medium text-slate-700">Mobile Number (10 Digits)</label><input type="tel" id="worker-mobile" value="${worker.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="worker-pin" class="font-medium text-slate-700">4-Digit PIN</label><input type="text" id="worker-pin" value="${worker.pin || ''}" pattern="[0-9]{4}" class="w-full p-2 border border-slate-300 rounded" required></div><div><label for="worker-rate" class="font-medium text-slate-700">Hourly Rate (₹)</label><input type="number" id="worker-rate" value="${worker.hourlyRate || ''}" class="w-full p-2 border border-slate-300 rounded" required></div><div class="flex justify-end gap-4 pt-4"><button type="button" class="modal-cancel-btn px-4 py-2 rounded bg-slate-200">Cancel</button><button type="submit" class="px-4 py-2 rounded bg-amber-500 font-semibold">${isEditing ? 'Update' : 'Save'}</button></div></form></div>`;
             modal.classList.remove('hidden');
             modal.querySelector('.modal-cancel-btn').addEventListener('click', () => modal.classList.add('hidden'));
-            document.getElementById('laborer-form').addEventListener('submit', async e => {
+            document.getElementById('worker-form').addEventListener('submit', async e => {
                 e.preventDefault();
-                const id = document.getElementById('laborer-id').value;
+                const id = document.getElementById('worker-id').value;
                 const assignedSiteIds = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
                 const data = { 
-                    name: document.getElementById('laborer-name').value, 
+                    name: document.getElementById('worker-name').value, 
                     assignedSiteIds,
-                    mobileNumber: document.getElementById('laborer-mobile').value, 
-                    pin: document.getElementById('laborer-pin').value, 
-                    hourlyRate: parseFloat(document.getElementById('laborer-rate').value) 
+                    mobileNumber: document.getElementById('worker-mobile').value, 
+                    pin: document.getElementById('worker-pin').value, 
+                    hourlyRate: parseFloat(document.getElementById('worker-rate').value) 
                 };
-                if (id) { await updateDoc(doc(db, 'laborers', id), data); } else { await addDoc(collection(db, 'laborers'), { ...data, status: 'Clocked Out' }); }
-                modal.classList.add('hidden');
+                try {
+                    if (id) { await updateDoc(doc(db, 'laborers', id), data); } else { await addDoc(collection(db, 'laborers'), { ...data, status: 'Clocked Out' }); }
+                    modal.classList.add('hidden');
+                } catch (error) {
+                    console.error("Error saving worker:", error);
+                    alert("Error saving worker. Check console for details.");
+                }
             });
         };
         
@@ -171,17 +177,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 const id = document.getElementById('expense-id').value;
                 const data = { date: document.getElementById('expense-date').value, siteId: document.getElementById('expense-site').value, description: document.getElementById('expense-desc').value, amount: parseFloat(document.getElementById('expense-amount').value) };
-                if (id) { await updateDoc(doc(db, 'expenses', id), data); } else { await addDoc(collection(db, 'expenses'), data); }
-                modal.classList.add('hidden');
+                try {
+                    if (id) { await updateDoc(doc(db, 'expenses', id), data); } else { await addDoc(collection(db, 'expenses'), data); }
+                    modal.classList.add('hidden');
+                } catch(error) {
+                    console.error("Error saving expense:", error);
+                    alert("Error saving expense. Check console for details.");
+                }
             });
         };
 
-        const renderDashboardPage = () => {
+        const renderDashboardPage = async () => {
             const page = mainContent.querySelector('#dashboard');
-            const activeLaborers = laborersData.filter(l => l.status === 'Clocked In' || l.status === 'On Break').length;
-            const totalLaborers = laborersData.length;
-            const totalExpenses = expensesData.reduce((sum, e) => sum + (e.amount || 0), 0);
-            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Dashboard Overview</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-6"><div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Active Laborers</h3><p class="text-4xl font-bold text-slate-800 mt-2">${activeLaborers} / ${totalLaborers}</p></div><div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Total Sites</h3><p class="text-4xl font-bold text-slate-800 mt-2">${sitesData.length}</p></div><div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Total Expenses (All Time)</h3><p class="text-4xl font-bold text-slate-800 mt-2">${currencyFormatter.format(totalExpenses)}</p></div></div>`;
+            page.innerHTML = `<div class="text-center p-10"><p class="text-slate-500">Loading dashboard...</p></div>`; // Loading state
+            const activeWorkers = workersData.filter(l => l.status === 'Clocked In').length;
+            const totalWorkers = workersData.length;
+            
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            const monthlyPayroll = await calculatePayroll(startOfMonth, endOfMonth);
+            const totalMonthlyPayroll = Object.values(monthlyPayroll).reduce((sum, w) => sum + w.paymentDue, 0);
+
+            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Dashboard Overview</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Active Workers</h3><p class="text-4xl font-bold text-slate-800 mt-2">${activeWorkers} / ${totalWorkers}</p></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Total Sites</h3><p class="text-4xl font-bold text-slate-800 mt-2">${sitesData.length}</p></div>
+                <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Payroll (This Month)</h3><p class="text-4xl font-bold text-slate-800 mt-2">${currencyFormatter.format(totalMonthlyPayroll)}</p></div>
+            </div>`;
         };
         
         const renderSitesPage = () => {
@@ -190,15 +212,15 @@ document.addEventListener('DOMContentLoaded', () => {
              page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Sites</h2><button id="add-site-btn" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Site</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
-        const renderLaborersPage = () => {
-            const page = mainContent.querySelector('#laborers');
-            let tableRows = laborersData.map(l => {
+        const renderWorkersPage = () => {
+            const page = mainContent.querySelector('#workers');
+            let tableRows = workersData.map(l => {
                 const assignedSites = (l.assignedSiteIds || [])
                     .map(siteId => sitesData.find(s => s.id === siteId)?.name || 'Unknown Site')
                     .join(', ');
-                return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium text-slate-800">${l.name}</td><td class="py-4 px-6">${assignedSites || '<span class="text-slate-400">Not Assigned</span>'}</td><td class="py-4 px-6 text-slate-600">${l.mobileNumber || 'N/A'}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(l.hourlyRate || 0)}/hr</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-laborer" data-id="${l.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-laborer" data-id="${l.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Laborer"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`
+                return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium text-slate-800">${l.name}</td><td class="py-4 px-6">${assignedSites || '<span class="text-slate-400">Not Assigned</span>'}</td><td class="py-4 px-6 text-slate-600">${l.mobileNumber || 'N/A'}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(l.hourlyRate || 0)}/hr</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-worker" data-id="${l.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Worker"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-worker" data-id="${l.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Worker"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`
             }).join('');
-            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Laborers</h2><button id="add-laborer-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Laborer</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile Number</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-center">Hourly Rate</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Workers</h2><button id="add-worker-btn" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Worker</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile Number</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-center">Hourly Rate</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
 
         const renderExpensesPage = () => {
@@ -216,11 +238,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const date = timestamp.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
                 const time = timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
                 const site = sitesData.find(s => s.id === log.siteId)?.name || 'N/A';
-                const statusClass = log.action.includes('In') ? 'text-green-600' : (log.action.includes('Out') ? 'text-red-500' : 'text-blue-500');
+                const statusClass = log.action.includes('In') ? 'text-green-600' : 'text-red-500';
                 return `<tr class="border-b border-slate-200"><td class="py-4 px-6">${date} at ${time.toLowerCase()}</td><td class="py-4 px-6 font-medium">${log.laborerName || 'N/A'}</td><td class="py-4 px-6">${site}</td><td class="py-4 px-6 font-semibold ${statusClass}">${log.action}</td></tr>`;
             }).join('');
             if (sortedLogs.length === 0) { tableRows = `<tr><td colspan="4" class="text-center p-6 text-slate-500">No attendance records found yet.</td></tr>`; }
-            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Full Attendance Log</h2></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date & Time</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Laborer</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Action</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Full Attendance Log</h2></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date & Time</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Worker</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Action</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
         const renderDailyTasksPage = () => {
@@ -236,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                 </div>
                 <div id="task-assignment-container" class="hidden">
-                    <h3 class="text-2xl font-bold text-slate-800 mb-4">2. Enter Tasks for Laborers</h3>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">2. Enter Tasks for Workers</h3>
                     <div id="task-assignment-list" class="space-y-4"></div>
                 </div>
             `;
@@ -254,18 +276,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
         
-                const siteLaborers = laborersData.filter(l => l.assignedSiteIds && l.assignedSiteIds.includes(selectedSiteId));
+                const siteWorkers = workersData.filter(l => l.assignedSiteIds && l.assignedSiteIds.includes(selectedSiteId));
                 
-                if (siteLaborers.length === 0) {
-                    taskListDiv.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500 py-4">No laborers are assigned to this site.</p></div>`;
+                if (siteWorkers.length === 0) {
+                    taskListDiv.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500 py-4">No workers are assigned to this site.</p></div>`;
                 } else {
-                    siteLaborers.forEach(l => {
+                    siteWorkers.forEach(l => {
                         const card = document.createElement('div');
                         card.className = 'bg-white p-4 rounded-xl shadow-lg grid grid-cols-1 md:grid-cols-4 gap-4 items-center';
                         card.innerHTML = `
                             <label for="task-${l.id}" class="font-bold text-slate-800 md:col-span-1">${l.name}</label>
-                            <input type="text" id="task-${l.id}" data-laborer-id="${l.id}" value="${l.currentTask || ''}" class="md:col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Enter task description...">
-                            <button data-action="save-task" data-laborer-id="${l.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors justify-self-end w-full md:w-auto">Save</button>
+                            <input type="text" id="task-${l.id}" data-worker-id="${l.id}" value="${l.currentTask || ''}" class="md:col-span-2 w-full p-2 border border-slate-300 rounded-md" placeholder="Enter task description...">
+                            <button data-action="save-task" data-worker-id="${l.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors justify-self-end w-full md:w-auto">Save</button>
                         `;
                         taskListDiv.appendChild(card);
                     });
@@ -284,281 +306,255 @@ document.addEventListener('DOMContentLoaded', () => {
             const page = mainContent.querySelector('#payroll');
             const now = new Date();
             const year = now.getFullYear();
-            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const month = now.getMonth();
 
-            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Monthly Payroll Report</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><form id="payroll-form" class="flex flex-wrap items-end gap-4"><div><label for="month-picker" class="block text-sm font-medium text-slate-700">Select Month</label><input type="month" id="month-picker" value="${year}-${month}" class="mt-1 p-2 border border-slate-300 rounded-md"></div><button type="submit" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Generate Report</button></form></div><div id="payroll-report" class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500">Select a month and click "Generate Report" to see payroll calculations.</p></div>`;
+            const monthOptions = Array.from({length: 12}, (_, i) => {
+                const d = new Date(year, i, 1);
+                return `<option value="${i}" ${i === month ? 'selected' : ''}>${d.toLocaleString('default', { month: 'long' })}</option>`;
+            }).join('');
             
-            document.getElementById('payroll-form').addEventListener('submit', async (e) => {
-                 e.preventDefault();
-                 const monthValue = document.getElementById('month-picker').value;
-                 const [startYear, startMonth] = monthValue.split('-').map(Number);
-                 const startDate = new Date(startYear, startMonth - 1, 1);
-                 const endDate = new Date(startYear, startMonth, 0, 23, 59, 59, 999);
+            const yearOptions = Array.from({length: 5}, (_, i) => {
+                const y = year - i;
+                return `<option value="${y}" ${y === year ? 'selected' : ''}>${y}</option>`;
+            }).join('');
 
+            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Payroll Calculator</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><form id="payroll-form" class="flex flex-wrap items-end gap-4"><div class="flex-1 min-w-[150px]"><label for="month-select" class="block text-sm font-medium text-slate-700">Month</label><select id="month-select" class="mt-1 p-2 w-full border border-slate-300 rounded-md">${monthOptions}</select></div><div class="flex-1 min-w-[120px]"><label for="year-select" class="block text-sm font-medium text-slate-700">Year</label><select id="year-select" class="mt-1 p-2 w-full border border-slate-300 rounded-md">${yearOptions}</select></div><button type="submit" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Generate Report</button></form></div><div id="payroll-report" class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500">Select a month and year to generate a payroll report.</p></div>`;
+            
+            const payrollForm = document.getElementById('payroll-form');
+            payrollForm.addEventListener('submit', async (e) => {
+                 e.preventDefault();
+                 const selectedMonth = parseInt(document.getElementById('month-select').value, 10);
+                 const selectedYear = parseInt(document.getElementById('year-select').value, 10);
+
+                 const start = new Date(selectedYear, selectedMonth, 1);
+                 const end = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+                 
                  const reportContainer = document.getElementById('payroll-report');
                  reportContainer.innerHTML = `<p class="text-center text-slate-500">Calculating... Please wait.</p>`;
+                 const reportData = await calculatePayroll(start, end);
 
-                 const reportData = await calculatePayroll(startDate, endDate);
                  if (Object.keys(reportData).length === 0) {
                      reportContainer.innerHTML = `<p class="text-center text-slate-500">No attendance data found for the selected period.</p>`;
                      return;
                  }
+
                  let totalPayroll = 0;
-                 let tableRows = Object.values(reportData).map(laborer => {
-                     totalPayroll += laborer.paymentDue;
-                     return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium">${laborer.name}</td><td class="py-4 px-6 text-center">${laborer.totalHours.toFixed(2)}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(laborer.rate)}</td><td class="py-4 px-6 text-right font-bold">${currencyFormatter.format(laborer.paymentDue)}</td></tr>`;
+                 let tableRows = Object.values(reportData).sort((a,b) => a.name.localeCompare(b.name)).map(worker => {
+                     totalPayroll += worker.paymentDue;
+                     return `<tr class="border-b border-slate-200"><td class="py-4 px-6 font-medium">${worker.name}</td><td class="py-4 px-6 text-center">${worker.totalHours.toFixed(2)}</td><td class="py-4 px-6 text-center">${currencyFormatter.format(worker.rate)}</td><td class="py-4 px-6 text-right font-bold">${currencyFormatter.format(worker.paymentDue)}</td></tr>`;
                  }).join('');
-                 reportContainer.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">Payroll for ${startDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6">Laborer</th><th class="py-3 px-6 text-center">Total Hours</th><th class="py-3 px-6 text-center">Rate</th><th class="py-3 px-6 text-right">Payment Due</th></tr></thead><tbody>${tableRows}</tbody><tfoot><tr class="border-t-2 border-slate-300"><td colspan="3" class="py-4 px-6 font-bold text-right text-slate-600">Total Payroll</td><td class="py-4 px-6 font-bold text-right text-xl text-slate-800">${currencyFormatter.format(totalPayroll)}</td></tr></tfoot></table></div>`;
+
+                 reportContainer.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">Payroll Report for ${start.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6">Worker</th><th class="py-3 px-6 text-center">Total Hours</th><th class="py-3 px-6 text-center">Hourly Rate</th><th class="py-3 px-6 text-right">Payment Due</th></tr></thead><tbody>${tableRows}</tbody><tfoot><tr class="border-t-2 border-slate-300"><td colspan="3" class="py-4 px-6 font-bold text-right text-slate-600">Total Payroll for Month</td><td class="py-4 px-6 font-bold text-right text-xl text-slate-800">${currencyFormatter.format(totalPayroll)}</td></tr></tfoot></table></div>`;
             });
+            payrollForm.dispatchEvent(new Event('submit')); // Auto-generate for current month
         };
         
         const renderProjectSummaryPage = () => {
             const page = mainContent.querySelector('#summary');
-            const siteOptions = sitesData.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-            const endDate = new Date(), startDate = new Date();
-            startDate.setDate(endDate.getDate() - 29);
-            const formatDate = (date) => date.toISOString().split('T')[0];
-            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Project Cost Summary</h2><div class="bg-white p-6 rounded-xl shadow-lg mb-6"><form id="summary-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end"><div class="md:col-span-2"><label for="summary-site" class="block text-sm font-medium text-slate-700">Select Site</label><select id="summary-site" class="mt-1 p-2 w-full border border-slate-300 rounded-md" required><option value="">-- Select a Site --</option>${siteOptions}</select></div><div><label for="summary-start-date" class="block text-sm font-medium text-slate-700">Start Date</label><input type="date" id="summary-start-date" value="${formatDate(startDate)}" class="mt-1 p-2 w-full border border-slate-300 rounded-md"></div><div><button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 font-bold py-2 px-4 rounded-lg shadow-sm transition-colors">Generate Report</button></div></form></div><div id="summary-report" class="bg-white p-6 rounded-xl shadow-lg"><p class="text-center text-slate-500">Select a site and date range to generate a cost summary.</p></div>`;
-            document.getElementById('summary-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const siteId = document.getElementById('summary-site').value;
-                if (!siteId) { alert('Please select a site.'); return; }
-                const start = new Date(document.getElementById('summary-start-date').value);
-                const end = new Date();
-                end.setHours(23, 59, 59, 999);
-                const reportContainer = document.getElementById('summary-report');
-                reportContainer.innerHTML = `<p class="text-center text-slate-500">Calculating... Please wait.</p>`;
-                const laborCost = await calculateLaborCostForSite(siteId, start, end);
-                const expenseCost = calculateExpenseCostForSite(siteId, start, end);
-                const totalCost = laborCost + expenseCost;
-                reportContainer.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">Cost Summary for ${sitesData.find(s => s.id === siteId)?.name || 'N/A'}</h3><div class="space-y-4"><div class="flex justify-between items-center p-4 bg-slate-100 rounded-lg"><span class="font-medium text-slate-600">Total Labor Cost</span><span class="font-bold text-lg text-slate-800">${currencyFormatter.format(laborCost)}</span></div><div class="flex justify-between items-center p-4 bg-slate-100 rounded-lg"><span class="font-medium text-slate-600">Total Material & Expenses</span><span class="font-bold text-lg text-slate-800">${currencyFormatter.format(expenseCost)}</span></div><div class="flex justify-between items-center p-4 bg-green-100 border-t-2 border-green-300 rounded-lg"><span class="font-bold text-green-800 uppercase">Total Project Cost</span><span class="font-bold text-xl text-green-900">${currencyFormatter.format(totalCost)}</span></div></div>`;
-            });
+            page.innerHTML = `<div>Project Summary Page - Not Implemented</div>`;
         };
 
         async function calculatePayroll(startDate, endDate) {
             const q = query(collection(db, "attendance_logs"), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
-            const querySnapshot = await getDocs(q);
-            const logs = querySnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-            logs.sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis());
-
+            const logsSnapshot = await getDocs(q);
+            const logs = logsSnapshot.docs.map(d => ({ ...d.data(), timestamp: d.data().timestamp.toDate() })).sort((a, b) => a.timestamp - b.timestamp);
+        
             const payrollData = {};
-
-            for (const laborer of laborersData) {
-                const laborerLogs = logs.filter(l => l.laborerId === laborer.id);
-                if (laborerLogs.length === 0) continue;
-
+        
+            for (const worker of workersData) {
+                const workerLogs = logs.filter(log => log.laborerId === worker.id);
+                if (workerLogs.length === 0) continue;
+        
                 let totalHours = 0;
                 let clockInTime = null;
-
-                for (const log of laborerLogs) {
-                    if (log.action === 'Clocked In' && !clockInTime) {
-                        clockInTime = log.timestamp.toDate();
-                    } else if (log.action === 'Clocked Out' && clockInTime) {
-                        const clockOutTime = log.timestamp.toDate();
-                        const duration = (clockOutTime - clockInTime) / (1000 * 60 * 60); // duration in hours
-                        totalHours += duration;
-                        clockInTime = null; // Reset for next clock-in
+        
+                workerLogs.forEach(log => {
+                    if (log.action === 'Clock In' && !clockInTime) {
+                        clockInTime = log.timestamp;
+                    } else if (log.action === 'Clock Out' && clockInTime) {
+                        const hoursWorked = (log.timestamp - clockInTime) / (1000 * 60 * 60);
+                        totalHours += hoursWorked;
+                        clockInTime = null;
                     }
+                });
+        
+                if (clockInTime) { // If worker is still clocked in
+                     const hoursWorked = (new Date() - clockInTime) / (1000 * 60 * 60);
+                     totalHours += Math.min(hoursWorked, 24); // Cap at 24 hours for safety
                 }
-                
-                if (totalHours > 0) {
-                    payrollData[laborer.id] = {
-                        name: laborer.name,
-                        totalHours: totalHours,
-                        rate: laborer.hourlyRate || 0,
-                        paymentDue: totalHours * (laborer.hourlyRate || 0)
-                    };
-                }
+        
+                payrollData[worker.id] = {
+                    name: worker.name,
+                    rate: worker.hourlyRate,
+                    totalHours: totalHours,
+                    paymentDue: totalHours * worker.hourlyRate
+                };
             }
             return payrollData;
         }
         
-        async function calculateLaborCostForSite(siteId, startDate, endDate) {
-            const q = query(collection(db, "attendance_logs"), where("siteId", "==", siteId), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
-            const querySnapshot = await getDocs(q);
-            const logs = querySnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-            logs.sort((a,b) => a.timestamp.toMillis() - b.timestamp.toMillis());
-        
-            let totalCost = 0;
-            const laborersOnSite = [...new Set(logs.map(l => l.laborerId))];
-        
-            for (const laborerId of laborersOnSite) {
-                const laborer = laborersData.find(l => l.id === laborerId);
-                if (!laborer) continue;
-        
-                const laborerLogs = logs.filter(l => l.laborerId === laborerId);
-                let totalHours = 0;
-                let clockInTime = null;
-        
-                for (const log of laborerLogs) {
-                    if (log.action === 'Clocked In' && !clockInTime) {
-                        clockInTime = log.timestamp.toDate();
-                    } else if (log.action === 'Clocked Out' && clockInTime) {
-                        const clockOutTime = log.timestamp.toDate();
-                        const duration = (clockOutTime - clockInTime) / (1000 * 60 * 60);
-                        totalHours += duration;
-                        clockInTime = null;
-                    }
-                }
-                totalCost += totalHours * (laborer.hourlyRate || 0);
-            }
-            return totalCost;
-        }
-
-        function calculateExpenseCostForSite(siteId, startDate, endDate) {
-            const start = startDate.toISOString().split('T')[0];
-            const end = endDate.toISOString().split('T')[0];
-
-            return expensesData
-                .filter(e => e.siteId === siteId && e.date >= start && e.date <= end)
-                .reduce((sum, e) => sum + (e.amount || 0), 0);
-        }
-        
+        // --- ROUTER & NAVIGATION ---
         const routes = {
-            '#dashboard': renderDashboardPage, '#summary': renderProjectSummaryPage, '#tasks': renderDailyTasksPage, '#payroll': renderPayrollPage, '#sites': renderSitesPage, '#laborers': renderLaborersPage, '#expenses': renderExpensesPage, '#attendance': renderAttendanceLogPage
+            '#dashboard': renderDashboardPage, '#summary': renderProjectSummaryPage, '#tasks': renderDailyTasksPage, '#payroll': renderPayrollPage, '#sites': renderSitesPage, '#workers': renderWorkersPage, '#expenses': renderExpensesPage, '#attendance': renderAttendanceLogPage
         };
 
-        const renderCurrentPage = () => {
-            const hash = window.location.hash || '#dashboard';
+        const renderCurrentPage = (hash) => {
             mainContent.querySelectorAll('.page-content').forEach(c => c.classList.add('hidden'));
-            const page = mainContent.querySelector(hash);
             const renderFunction = routes[hash];
-            if (renderFunction && page) {
+            const targetPage = mainContent.querySelector(hash.split('?')[0]);
+            
+            if(targetPage) targetPage.classList.remove('hidden');
+
+            if (renderFunction) {
                 renderFunction();
-                page.classList.remove('hidden');
             } else {
-                renderDashboardPage();
                 mainContent.querySelector('#dashboard').classList.remove('hidden');
+                routes['#dashboard']();
             }
+             dashboardContent.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.getAttribute('href') === hash));
         };
 
         const handleNavigation = () => {
-            const hash = window.location.hash || '#dashboard';
-            dashboardContent.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.getAttribute('href') === hash));
-            renderCurrentPage();
-            if (document.body.classList.contains('sidebar-open')) {
-                document.body.classList.remove('sidebar-open');
-            }
+            renderCurrentPage(window.location.hash || '#dashboard');
         };
 
-        window.addEventListener('hashchange', handleNavigation);
-        
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        
-        if (mobileMenuBtn && sidebarOverlay) {
-            mobileMenuBtn.addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
-            sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
-        }
-
+        // --- GLOBAL EVENT LISTENER ---
         mainContent.addEventListener('click', async e => {
             const target = e.target.closest('button');
             if (!target) return;
 
-            if (target.id === 'add-site-btn') return openSiteModal();
-            if (target.id === 'add-laborer-btn') return openLaborerModal();
-            if (target.id === 'add-expense-btn') return openExpenseModal();
-
-            if (target.id === 'save-all-tasks-btn') {
-                const inputs = mainContent.querySelectorAll('#task-assignment-list input[data-laborer-id]');
-                if (inputs.length === 0) return;
-
-                target.disabled = true;
-                target.textContent = 'Saving All...';
-
-                const updatePromises = [];
-                inputs.forEach(input => {
-                    const laborerId = input.dataset.laborerId;
-                    const taskValue = input.value.trim();
-                    updatePromises.push(updateDoc(doc(db, 'laborers', laborerId), { currentTask: taskValue }));
-                });
-
-                try {
-                    await Promise.all(updatePromises);
-                    target.textContent = 'All Saved!';
-                    target.classList.remove('bg-amber-500', 'hover:bg-amber-600');
-                    target.classList.add('bg-green-500', 'text-white');
-                } catch (error) {
-                    console.error("Error saving all tasks:", error);
-                    target.textContent = 'Error!';
-                    target.classList.remove('bg-amber-500', 'hover:bg-amber-600');
-                    target.classList.add('bg-red-500', 'text-white');
-                } finally {
-                     setTimeout(() => {
-                        target.textContent = 'Save All Tasks for Site';
-                        target.classList.remove('bg-green-500', 'bg-red-500', 'text-white');
-                        target.classList.add('bg-amber-500', 'hover:bg-amber-600', 'text-slate-900');
-                        target.disabled = false;
-                    }, 2000);
-                }
-                return;
-            }
-
             const action = target.dataset.action;
-            const id = target.dataset.id;
+            const id = target.dataset.id || target.dataset.workerId;
             
-            if (action === 'save-task') {
-                const laborerId = target.dataset.laborerId;
-                if (!laborerId) return;
-                
-                const input = document.getElementById(`task-${laborerId}`);
-                const taskValue = input.value.trim();
-        
-                target.disabled = true;
-                target.textContent = 'Saving...';
-                
-                try {
-                    await updateDoc(doc(db, 'laborers', laborerId), { currentTask: taskValue });
-                    target.textContent = 'Saved!';
-                    target.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-                    target.classList.add('bg-green-500');
-        
-                    setTimeout(() => {
-                        target.textContent = 'Save';
-                        target.classList.remove('bg-green-500');
-                        target.classList.add('bg-blue-500', 'hover:bg-blue-600');
-                        target.disabled = false;
-                    }, 2000);
-                } catch (error) {
-                    console.error("Error saving task: ", error);
-                    target.textContent = 'Error!';
-                    target.classList.remove('bg-blue-500', 'hover:bg-blue-600');
-                    target.classList.add('bg-red-500');
-                    setTimeout(() => {
-                        target.textContent = 'Save';
-                        target.classList.remove('bg-red-500');
-                        target.classList.add('bg-blue-500', 'hover:bg-blue-600');
-                        target.disabled = false;
-                    }, 3000);
+            switch (action) {
+                case 'edit-site': {
+                    const site = sitesData.find(s => s.id === id);
+                    if(site) openSiteModal(site);
+                    break;
                 }
-                return;
-            }
-
-            if (!action || !id) return;
-            
-            if (action === 'delete-site') {
-                showConfirmationModal('Are you sure you want to delete this site?', () => deleteDoc(doc(db, 'sites', id)));
-            } else if (action === 'edit-site') {
-                const site = sitesData.find(s => s.id === id);
-                if (site) openSiteModal(site);
-            } else if (action === 'delete-laborer') {
-                 showConfirmationModal('Are you sure you want to delete this laborer?', () => deleteDoc(doc(db, 'laborers', id)));
-            } else if (action === 'edit-laborer') {
-                const laborer = laborersData.find(l => l.id === id);
-                if (laborer) openLaborerModal(laborer);
-            } else if (action === 'delete-expense') {
-                showConfirmationModal('Are you sure you want to delete this expense?', () => deleteDoc(doc(db, 'expenses', id)));
-            } else if (action === 'edit-expense') {
-                const expense = expensesData.find(ex => ex.id === id);
-                if (expense) openExpenseModal(expense);
+                case 'delete-site': {
+                     showConfirmationModal('Are you sure you want to delete this site?', async () => {
+                        await deleteDoc(doc(db, "sites", id));
+                     });
+                    break;
+                }
+                case 'edit-worker': {
+                    const worker = workersData.find(w => w.id === id);
+                    if(worker) openWorkerModal(worker);
+                    break;
+                }
+                case 'delete-worker': {
+                     showConfirmationModal('Are you sure you want to delete this worker?', async () => {
+                        await deleteDoc(doc(db, "laborers", id));
+                     });
+                    break;
+                }
+                 case 'edit-expense': {
+                    const expense = expensesData.find(ex => ex.id === id);
+                    if(expense) openExpenseModal(expense);
+                    break;
+                }
+                case 'delete-expense': {
+                     showConfirmationModal('Are you sure you want to delete this expense?', async () => {
+                        await deleteDoc(doc(db, "expenses", id));
+                     });
+                    break;
+                }
+                case 'save-task': {
+                    const input = mainContent.querySelector(`input[data-worker-id="${id}"]`);
+                    if (!input) return;
+                    
+                    target.disabled = true;
+                    target.textContent = 'Saving...';
+                    
+                    try {
+                        await updateDoc(doc(db, 'laborers', id), { currentTask: input.value.trim() });
+                        target.textContent = 'Saved!';
+                        target.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                        target.classList.add('bg-green-500');
+                    } catch (error) {
+                        console.error("Error saving task:", error);
+                        target.textContent = 'Error!';
+                        target.classList.add('bg-red-500');
+                    } finally {
+                        setTimeout(() => {
+                            target.textContent = 'Save';
+                            target.classList.remove('bg-green-500', 'bg-red-500');
+                            target.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                            target.disabled = false;
+                        }, 2000);
+                    }
+                    break;
+                }
             }
         });
 
-        onSnapshot(query(collection(db, "sites")), s => { sitesData = s.docs.map(d => ({id:d.id, ...d.data()})); renderCurrentPage(); });
-        onSnapshot(query(collection(db, "laborers")), s => { laborersData = s.docs.map(d => ({id:d.id, ...d.data()})); renderCurrentPage(); });
-        onSnapshot(query(collection(db, "expenses")), s => { expensesData = s.docs.map(d => ({id:d.id, ...d.data()})); renderCurrentPage(); });
-        onSnapshot(query(collection(db, "attendance_logs")), s => { attendanceLogData = s.docs.map(d => ({id:d.id, ...d.data()})); renderCurrentPage(); });
+        // --- BUTTONS OUTSIDE MAINCONTENT ---
+        dashboardContent.addEventListener('click', e => {
+            if (e.target.id === 'add-site-btn') return openSiteModal();
+            if (e.target.id === 'add-worker-btn') return openWorkerModal();
+            if (e.target.id === 'add-expense-btn') return openExpenseModal();
 
-        handleNavigation();
+            if (e.target.id === 'save-all-tasks-btn') {
+                 const inputs = mainContent.querySelectorAll('#task-assignment-list input[data-worker-id]');
+                if (inputs.length === 0) return;
+
+                const saveAllBtn = e.target;
+                saveAllBtn.disabled = true;
+                saveAllBtn.textContent = 'Saving All...';
+
+                const updatePromises = [];
+                inputs.forEach(input => {
+                    const workerId = input.dataset.workerId;
+                    const taskValue = input.value.trim();
+                    updatePromises.push(updateDoc(doc(db, 'laborers', workerId), { currentTask: taskValue }));
+                });
+
+                Promise.all(updatePromises).then(() => {
+                    saveAllBtn.textContent = 'All Saved!';
+                    saveAllBtn.classList.remove('bg-amber-500');
+                    saveAllBtn.classList.add('bg-green-500', 'text-white');
+                }).catch(error => {
+                    console.error("Error saving all tasks:", error);
+                    saveAllBtn.textContent = 'Error!';
+                    saveAllBtn.classList.add('bg-red-500', 'text-white');
+                }).finally(() => {
+                     setTimeout(() => {
+                        saveAllBtn.textContent = 'Save All Tasks for Site';
+                        saveAllBtn.classList.remove('bg-green-500', 'bg-red-500', 'text-white');
+                        saveAllBtn.classList.add('bg-amber-500');
+                        saveAllBtn.disabled = false;
+                    }, 2000);
+                });
+            }
+        });
+
+        // --- MOBILE NAVIGATION ---
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const closeSidebar = () => document.body.classList.remove('sidebar-open');
+        
+        mobileMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.body.classList.toggle('sidebar-open');
+        });
+        overlay.addEventListener('click', closeSidebar);
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A') {
+                closeSidebar();
+            }
+        });
+
+        // --- DATA SUBSCRIPTIONS ---
+        const refreshPage = () => handleNavigation();
+        onSnapshot(query(collection(db, "sites")), s => { sitesData = s.docs.map(d => ({id:d.id, ...d.data()})); refreshPage(); });
+        onSnapshot(query(collection(db, "laborers")), s => { workersData = s.docs.map(d => ({id:d.id, ...d.data()})); refreshPage(); });
+        onSnapshot(query(collection(db, "expenses")), s => { expensesData = s.docs.map(d => ({id:d.id, ...d.data()})); refreshPage(); });
+        onSnapshot(query(collection(db, "attendance_logs")), s => { attendanceLogData = s.docs.map(d => ({id:d.id, ...d.data()})); refreshPage(); });
+
+        window.addEventListener('hashchange', handleNavigation);
+        handleNavigation(); // Initial page load
     }
 });
+
