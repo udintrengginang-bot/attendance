@@ -320,11 +320,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const cost = await calculatePayroll(today, tomorrow);
             const totalCost = Object.values(cost).reduce((s, w) => s + w.gross, 0);
             
-            document.getElementById('active-workers-count').textContent = active;
-            document.getElementById('active-sites-count').textContent = activeSites;
-            document.getElementById('today-cost').textContent = currencyFormatter.format(totalCost);
+            const activeCountEl = document.getElementById('active-workers-count');
+            const sitesCountEl = document.getElementById('active-sites-count');
+            const costEl = document.getElementById('today-cost');
+            
+            if (activeCountEl) activeCountEl.textContent = active;
+            if (sitesCountEl) sitesCountEl.textContent = activeSites;
+            if (costEl) costEl.textContent = currencyFormatter.format(totalCost);
             
             const activityList = document.getElementById('activity-list');
+            if (!activityList) return;
+            
             const recent = [...attendanceLogData].sort((a,b) => b.timestamp?.seconds - a.timestamp?.seconds).slice(0,10);
             activityList.innerHTML = recent.length ? recent.map(log => {
                 const site = sitesData.find(s => s.id === log.siteId);
