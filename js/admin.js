@@ -127,6 +127,90 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { once: true });
         };
 
+        // UTILITY FUNCTIONS FOR PAYROLL CALCULATIONS
+        const calculateHoursWorked = (logs) => {
+            let totalMinutes = 0;
+            let currentStart = null;
+
+            for (const log of logs) {
+                if (log.action === 'Work Started') {
+                    currentStart = log.timestamp.toDate();
+                } else if (log.action === 'Work Ended' && currentStart) {
+                    const end = log.timestamp.toDate();
+                    const minutes = (end - currentStart) / (1000 * 60);
+                    totalMinutes += minutes;
+                    currentStart = null;
+                }
+            }
+
+            return totalMinutes / 60; // Convert to hours
+        };
+
+        const calculatePayroll = async (startDate, endDate) => {
+            const payrollData = {};
+
+            for (const laborer of laborersData) {
+                // Get attendance logs for this worker in date range
+                const logsQuery = query(
+                    collection(db, 'attendance_logs'),
+                    where('laborerId', '==', laborer.id),
+                    where('timestamp', '>=', Timestamp.fromDate(startDate)),
+                    where('timestamp', '<=', Timestamp.fromDate(endDate)),
+                    orderBy('timestamp', 'asc')
+                );
+                
+                const logsSnapshot = await getDocs(logsQuery);
+                const logs = logsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const hoursWorked = calculateHoursWorked(logs);
+                const grossPay = hoursWorked * (laborer.hourlyRate || 0);
+
+                // Get advances and deductions for this period
+                const financeRecords = financesData.filter(f => {
+                    if (f.laborerId !== laborer.id) return false;
+                    const fDate = new Date(f.date);
+                    return fDate >= startDate && fDate <= endDate;
+                });
+
+                const advances = financeRecords
+                    .filter(f => f.type === 'advance')
+                    .reduce((sum, f) => sum + f.amount, 0);
+
+                const deductions = financeRecords
+                    .filter(f => f.type === 'deduction')
+                    .reduce((sum, f) => sum + f.amount, 0);
+
+                const netPayable = grossPay - advances - deductions;
+
+                payrollData[laborer.id] = {
+                    name: laborer.name,
+                    hoursWorked: hoursWorked.toFixed(2),
+                    hourlyRate: laborer.hourlyRate || 0,
+                    grossPay,
+                    advances,
+                    deductions,
+                    netPayable
+                };
+            }
+
+            return payrollData;
+        };
+
+        const calculateAllLaborCost = async (startDate, endDate) => {
+            const payroll = await calculatePayroll(startDate, endDate);
+            return Object.values(payroll).reduce((sum, w) => sum + w.grossPay, 0);
+        };
+
+        const calculateAllExpenseCost = async (startDate, endDate) => {
+            return expensesData
+                .filter(e => {
+                    const eDate = new Date(e.date);
+                    return eDate >= startDate && eDate <= endDate;
+                })
+                .reduce((sum, e) => sum + e.amount, 0);
+        };
+
+        // MODAL FUNCTIONS
         const openSiteModal = (site = {}) => {
             const isEditing = !!site.id;
             const content = `
@@ -151,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (id) { await updateDoc(doc(db, 'sites', id), data); } 
                     else { await addDoc(collection(db, 'sites'), data); }
                     closeModal();
-                } catch (error) { console.error("Error saving site:", error); }
+                } catch (error) { console.error("Error saving site:", error); alert("Error saving site!"); }
             });
         };
 
@@ -173,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div><label for="worker-name" class="font-medium text-slate-700">Full Name</label><input type="text" id="worker-name" value="${laborer.name || ''}" class="w-full p-2 border border-slate-300 rounded" required></div>
                         <div class="space-y-2">
                             <label class="font-medium text-slate-700">Assign Sites</label>
-                            <div class="p-2 border border-slate-300 rounded-md max-h-32 overflow-y-auto space-y-2">${siteCheckboxes}</div>
+                            <div class="p-2 border border-slate-300 rounded-md max-h-32 overflow-y-auto space-y-2">${siteCheckboxes || '<p class="text-slate-500 text-sm">No sites available. Create sites first.</p>'}</div>
                         </div>
                         <div><label for="worker-mobile" class="font-medium text-slate-700">Mobile Number (10 Digits)</label><input type="tel" id="worker-mobile" value="${laborer.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-2 border border-slate-300 rounded" required></div>
                         <div><label for="worker-pin" class="font-medium text-slate-700">4-Digit PIN</label><input type="text" id="worker-pin" value="${laborer.pin || ''}" pattern="[0-9]{4}" class="w-full p-2 border border-slate-300 rounded" required></div>
@@ -200,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (id) { await updateDoc(doc(db, 'laborers', id), data); } 
                     else { await addDoc(collection(db, 'laborers'), { ...data, status: 'Work Ended' }); }
                     closeModal();
-                } catch (error) { console.error("Error saving worker:", error); }
+                } catch (error) { console.error("Error saving worker:", error); alert("Error saving worker!"); }
             });
         };
         
@@ -236,10 +320,217 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (id) { await updateDoc(doc(db, 'expenses', id), data); } 
                     else { await addDoc(collection(db, 'expenses'), data); }
                     closeModal();
-                } catch(error) { console.error("Error saving expense:", error); }
+                } catch(error) { console.error("Error saving expense:", error); alert("Error saving expense!"); }
             });
         };
 
+        const openDocumentsModal = (laborer) => {
+            const content = `
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl m-4">
+                    <div class="p-6 border-b"><h3 class="text-2xl font-bold">Documents - ${laborer.name}</h3></div>
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <label class="block font-medium text-slate-700 mb-2">Upload Document</label>
+                            <input type="file" id="doc-upload" class="w-full p-2 border border-slate-300 rounded" accept="image/*,.pdf">
+                            <button id="upload-doc-btn" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Upload</button>
+                        </div>
+                        <div id="documents-list" class="space-y-2">
+                            <p class="text-slate-500">Loading documents...</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-4 p-4 bg-slate-50 rounded-b-lg">
+                        <button class="modal-cancel-btn px-5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 font-semibold">Close</button>
+                    </div>
+                </div>`;
+            openModal(content);
+
+            const loadDocuments = async () => {
+                const listRef = ref(storage, `documents/${laborer.id}`);
+                try {
+                    const res = await listAll(listRef);
+                    const docsList = document.getElementById('documents-list');
+                    if (res.items.length === 0) {
+                        docsList.innerHTML = '<p class="text-slate-500">No documents uploaded yet.</p>';
+                        return;
+                    }
+                    const docsHTML = await Promise.all(res.items.map(async (itemRef) => {
+                        const url = await getDownloadURL(itemRef);
+                        return `<div class="flex items-center justify-between p-3 bg-slate-50 rounded">
+                            <span class="text-sm">${itemRef.name}</span>
+                            <div class="flex gap-2">
+                                <a href="${url}" target="_blank" class="text-blue-500 hover:text-blue-700">View</a>
+                                <button data-action="delete-doc" data-path="${itemRef.fullPath}" class="text-red-500 hover:text-red-700">Delete</button>
+                            </div>
+                        </div>`;
+                    }));
+                    docsList.innerHTML = docsHTML.join('');
+                } catch (error) {
+                    console.error("Error loading documents:", error);
+                    document.getElementById('documents-list').innerHTML = '<p class="text-red-500">Error loading documents.</p>';
+                }
+            };
+
+            loadDocuments();
+
+            document.getElementById('upload-doc-btn').addEventListener('click', async () => {
+                const fileInput = document.getElementById('doc-upload');
+                if (!fileInput.files[0]) return alert('Please select a file');
+                const file = fileInput.files[0];
+                const storageRef = ref(storage, `documents/${laborer.id}/${file.name}`);
+                try {
+                    await uploadBytes(storageRef, file);
+                    alert('Document uploaded successfully!');
+                    fileInput.value = '';
+                    loadDocuments();
+                } catch (error) {
+                    console.error("Upload error:", error);
+                    alert('Error uploading document!');
+                }
+            });
+
+            document.getElementById('documents-list').addEventListener('click', async (e) => {
+                if (e.target.dataset.action === 'delete-doc') {
+                    const filePath = e.target.dataset.path;
+                    if (!confirm('Delete this document?')) return;
+                    try {
+                        await deleteObject(ref(storage, filePath));
+                        alert('Document deleted!');
+                        loadDocuments();
+                    } catch (error) {
+                        console.error("Delete error:", error);
+                        alert('Error deleting document!');
+                    }
+                }
+            });
+        };
+
+        const openFinancesModal = (laborer) => {
+            const financeRecords = financesData.filter(f => f.laborerId === laborer.id);
+            const recordsHTML = financeRecords.length > 0 
+                ? financeRecords.map(f => `<div class="flex justify-between p-3 bg-slate-50 rounded">
+                    <div>
+                        <span class="font-medium ${f.type === 'advance' ? 'text-red-600' : 'text-blue-600'}">${f.type === 'advance' ? 'Advance' : 'Deduction'}</span>
+                        <p class="text-sm text-slate-600">${f.description}</p>
+                        <p class="text-xs text-slate-500">${f.date}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold">${currencyFormatter.format(f.amount)}</p>
+                        <button data-action="delete-finance" data-id="${f.id}" class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                    </div>
+                </div>`).join('')
+                : '<p class="text-slate-500">No financial records yet.</p>';
+
+            const content = `
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl m-4">
+                    <div class="p-6 border-b"><h3 class="text-2xl font-bold">Financial Records - ${laborer.name}</h3></div>
+                    <div class="p-6">
+                        <form id="finance-form" class="mb-6 p-4 bg-slate-50 rounded space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Type</label>
+                                    <select id="finance-type" class="w-full p-2 border rounded">
+                                        <option value="advance">Advance</option>
+                                        <option value="deduction">Deduction</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">Amount (₹)</label>
+                                    <input type="number" id="finance-amount" class="w-full p-2 border rounded" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Date</label>
+                                <input type="date" id="finance-date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Description</label>
+                                <input type="text" id="finance-desc" class="w-full p-2 border rounded" required>
+                            </div>
+                            <button type="submit" class="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Add Record</button>
+                        </form>
+                        <div id="finance-records-list" class="space-y-2">${recordsHTML}</div>
+                    </div>
+                    <div class="flex justify-end gap-4 p-4 bg-slate-50 rounded-b-lg">
+                        <button class="modal-cancel-btn px-5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 font-semibold">Close</button>
+                    </div>
+                </div>`;
+            openModal(content);
+
+            document.getElementById('finance-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const data = {
+                    laborerId: laborer.id,
+                    type: document.getElementById('finance-type').value,
+                    amount: parseFloat(document.getElementById('finance-amount').value),
+                    date: document.getElementById('finance-date').value,
+                    description: document.getElementById('finance-desc').value
+                };
+                try {
+                    await addDoc(collection(db, 'finances'), data);
+                    alert('Record added successfully!');
+                    closeModal();
+                } catch (error) {
+                    console.error("Error adding finance record:", error);
+                    alert('Error adding record!');
+                }
+            });
+
+            document.getElementById('finance-records-list').addEventListener('click', async (e) => {
+                if (e.target.dataset.action === 'delete-finance') {
+                    const id = e.target.dataset.id;
+                    if (!confirm('Delete this record?')) return;
+                    try {
+                        await deleteDoc(doc(db, 'finances', id));
+                        alert('Record deleted!');
+                        closeModal();
+                    } catch (error) {
+                        console.error("Error deleting record:", error);
+                        alert('Error deleting record!');
+                    }
+                }
+            });
+        };
+
+        const openTaskModal = (laborer = null) => {
+            const workerOptions = laborersData.map(l => `<option value="${l.id}" ${laborer?.id === l.id ? 'selected' : ''}>${l.name}</option>`).join('');
+            const content = `
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-md m-4">
+                    <div class="p-6 border-b"><h3 class="text-2xl font-bold">Assign Daily Task</h3></div>
+                    <form id="task-form" class="p-6 space-y-4">
+                        <div>
+                            <label for="task-worker" class="font-medium text-slate-700">Select Worker</label>
+                            <select id="task-worker" class="w-full p-3 border border-slate-300 rounded" required>
+                                <option value="">-- Select Worker --</option>
+                                ${workerOptions}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="task-description" class="font-medium text-slate-700">Task Description</label>
+                            <textarea id="task-description" rows="4" class="w-full p-3 border border-slate-300 rounded" placeholder="Describe the task for today..." required>${laborer?.currentTask || ''}</textarea>
+                        </div>
+                        <div class="flex justify-end gap-4 pt-4">
+                            <button type="button" class="modal-cancel-btn px-4 py-2 rounded bg-slate-200">Cancel</button>
+                            <button type="submit" class="px-4 py-2 rounded bg-amber-500 font-semibold">Assign Task</button>
+                        </div>
+                    </form>
+                </div>`;
+            openModal(content);
+            document.getElementById('task-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const workerId = document.getElementById('task-worker').value;
+                const task = document.getElementById('task-description').value;
+                try {
+                    await updateDoc(doc(db, 'laborers', workerId), { currentTask: task });
+                    alert('Task assigned successfully!');
+                    closeModal();
+                } catch (error) {
+                    console.error("Error assigning task:", error);
+                    alert('Error assigning task!');
+                }
+            });
+        };
+
+        // PAGE RENDER FUNCTIONS
         const renderDashboardPage = async () => {
             const page = mainContent.querySelector('#dashboard');
             if (!page) return;
@@ -258,19 +549,270 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const totalMonthlyPayroll = Object.values(payrollData).reduce((sum, w) => sum + w.netPayable, 0);
 
-            page.innerHTML = `<h2 class="text-3xl font-bold text-slate-800 mb-6">Dashboard Overview</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Active Workers</h3><p class="text-4xl font-bold text-slate-800 mt-2">${activeWorkers} / ${totalWorkers}</p></div>
-                <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Total Sites</h3><p class="text-4xl font-bold text-slate-800 mt-2">${sitesData.length}</p></div>
-                <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="font-medium text-slate-500">Payroll (This Month)</h3><p class="text-4xl font-bold text-slate-800 mt-2">${currencyFormatter.format(totalMonthlyPayroll)}</p></div>
-                 <div class="bg-white p-6 rounded-xl shadow-lg md:col-span-2 lg:col-span-3"><h3 class="font-medium text-slate-500">Month-to-Date Summary</h3><div class="flex flex-wrap justify-around items-center mt-2 gap-4"><div class="text-center"><p class="text-sm text-slate-500">Total Labor Cost</p><p class="text-2xl font-bold">${currencyFormatter.format(laborCost)}</p></div><div class="text-center"><p class="text-sm text-slate-500">Total Expenses</p><p class="text-2xl font-bold">${currencyFormatter.format(expenseCost)}</p></div><div class="text-center"><p class="text-sm text-slate-500">Total Project Cost</p><p class="text-2xl font-bold text-amber-600">${currencyFormatter.format(laborCost + expenseCost)}</p></div></div></div>
-            </div>`;
+            page.innerHTML = `
+                <h2 class="text-3xl font-bold text-slate-800 mb-6">Dashboard Overview</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-medium text-slate-500">Active Workers</h3>
+                        <p class="text-4xl font-bold text-slate-800 mt-2">${activeWorkers} / ${totalWorkers}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-medium text-slate-500">Total Sites</h3>
+                        <p class="text-4xl font-bold text-slate-800 mt-2">${sitesData.length}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-medium text-slate-500">Payroll (This Month)</h3>
+                        <p class="text-4xl font-bold text-slate-800 mt-2">${currencyFormatter.format(totalMonthlyPayroll)}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg md:col-span-2 lg:col-span-3">
+                        <h3 class="font-medium text-slate-500 mb-4">Month-to-Date Summary</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                                <p class="text-sm text-slate-600 mb-1">Total Labor Cost</p>
+                                <p class="text-2xl font-bold text-blue-600">${currencyFormatter.format(laborCost)}</p>
+                            </div>
+                            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                                <p class="text-sm text-slate-600 mb-1">Total Expenses</p>
+                                <p class="text-2xl font-bold text-purple-600">${currencyFormatter.format(expenseCost)}</p>
+                            </div>
+                            <div class="text-center p-4 bg-amber-50 rounded-lg">
+                                <p class="text-sm text-slate-600 mb-1">Total Project Cost</p>
+                                <p class="text-2xl font-bold text-amber-600">${currencyFormatter.format(laborCost + expenseCost)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        const renderProjectSummaryPage = async () => {
+            const page = mainContent.querySelector('#summary');
+            if (!page) return;
+
+            // Group expenses by site
+            const expensesBySite = {};
+            sitesData.forEach(site => {
+                expensesBySite[site.id] = {
+                    name: site.name,
+                    location: site.location,
+                    expenses: 0,
+                    labor: 0,
+                    total: 0
+                };
+            });
+
+            expensesData.forEach(expense => {
+                if (expensesBySite[expense.siteId]) {
+                    expensesBySite[expense.siteId].expenses += expense.amount;
+                }
+            });
+
+            // Calculate labor cost per site
+            for (const site of sitesData) {
+                const siteLogs = attendanceLogData.filter(log => log.siteId === site.id);
+                const laborerIds = [...new Set(siteLogs.map(log => log.laborerId))];
+                
+                let siteLabor = 0;
+                for (const laborerId of laborerIds) {
+                    const laborer = laborersData.find(l => l.id === laborerId);
+                    if (!laborer) continue;
+                    
+                    const workerLogs = siteLogs.filter(log => log.laborerId === laborerId);
+                    const hours = calculateHoursWorked(workerLogs);
+                    siteLabor += hours * (laborer.hourlyRate || 0);
+                }
+                
+                if (expensesBySite[site.id]) {
+                    expensesBySite[site.id].labor = siteLabor;
+                    expensesBySite[site.id].total = siteLabor + expensesBySite[site.id].expenses;
+                }
+            }
+
+            const summaryRows = Object.values(expensesBySite).map(site => `
+                <tr class="border-b border-slate-200 hover:bg-slate-50">
+                    <td class="py-4 px-6 font-medium text-slate-800">${site.name}</td>
+                    <td class="py-4 px-6 text-slate-600">${site.location}</td>
+                    <td class="py-4 px-6 text-right">${currencyFormatter.format(site.labor)}</td>
+                    <td class="py-4 px-6 text-right">${currencyFormatter.format(site.expenses)}</td>
+                    <td class="py-4 px-6 text-right font-bold text-amber-600">${currencyFormatter.format(site.total)}</td>
+                </tr>
+            `).join('');
+
+            const grandTotal = Object.values(expensesBySite).reduce((sum, site) => sum + site.total, 0);
+
+            page.innerHTML = `
+                <h2 class="text-3xl font-bold text-slate-800 mb-6">Project Summary by Site</h2>
+                <div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200">
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Labor Cost</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Expenses</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Total Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>${summaryRows}</tbody>
+                        <tfoot>
+                            <tr class="bg-slate-100 font-bold">
+                                <td colspan="4" class="py-4 px-6 text-right">GRAND TOTAL:</td>
+                                <td class="py-4 px-6 text-right text-amber-600">${currencyFormatter.format(grandTotal)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>`;
+        };
+
+        const renderDailyTasksPage = () => {
+            const page = mainContent.querySelector('#tasks');
+            if (!page) return;
+
+            const taskRows = laborersData.map(laborer => `
+                <tr class="border-b border-slate-200 hover:bg-slate-50">
+                    <td class="py-4 px-6 font-medium text-slate-800">${laborer.name}</td>
+                    <td class="py-4 px-6 text-slate-600">${laborer.currentTask || '<span class="text-slate-400">No task assigned</span>'}</td>
+                    <td class="py-4 px-6 text-right">
+                        <button data-action="assign-task" data-id="${laborer.id}" class="text-blue-500 hover:text-blue-700 font-semibold">
+                            ${laborer.currentTask ? 'Edit Task' : 'Assign Task'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            page.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-slate-800">Daily Tasks</h2>
+                    <button data-action="assign-task" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Assign New Task</button>
+                </div>
+                <div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200">
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Worker Name</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Today's Task</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>${taskRows}</tbody>
+                    </table>
+                </div>`;
+        };
+
+        const renderPayrollPage = async () => {
+            const page = mainContent.querySelector('#payroll');
+            if (!page) return;
+
+            // Default to current month
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+            const payrollData = await calculatePayroll(startOfMonth, endOfMonth);
+
+            const payrollRows = Object.entries(payrollData).map(([id, data]) => `
+                <tr class="border-b border-slate-200 hover:bg-slate-50">
+                    <td class="py-4 px-6 font-medium text-slate-800">${data.name}</td>
+                    <td class="py-4 px-6 text-center">${data.hoursWorked}</td>
+                    <td class="py-4 px-6 text-right">${currencyFormatter.format(data.hourlyRate)}</td>
+                    <td class="py-4 px-6 text-right">${currencyFormatter.format(data.grossPay)}</td>
+                    <td class="py-4 px-6 text-right text-red-600">${currencyFormatter.format(data.advances)}</td>
+                    <td class="py-4 px-6 text-right text-blue-600">${currencyFormatter.format(data.deductions)}</td>
+                    <td class="py-4 px-6 text-right font-bold text-green-600">${currencyFormatter.format(data.netPayable)}</td>
+                </tr>
+            `).join('');
+
+            const totals = Object.values(payrollData).reduce((acc, data) => ({
+                grossPay: acc.grossPay + data.grossPay,
+                advances: acc.advances + data.advances,
+                deductions: acc.deductions + data.deductions,
+                netPayable: acc.netPayable + data.netPayable
+            }), { grossPay: 0, advances: 0, deductions: 0, netPayable: 0 });
+
+            const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+            page.innerHTML = `
+                <h2 class="text-3xl font-bold text-slate-800 mb-6">Payroll - ${monthName}</h2>
+                <div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200">
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase">Worker</th>
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase text-center">Hours</th>
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase text-right">Rate</th>
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase text-right">Gross Pay</th>
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase text-right">Advances</th>
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase text-right">Deductions</th>
+                                <th class="py-3 px-4 font-semibold text-slate-500 uppercase text-right">Net Pay</th>
+                            </tr>
+                        </thead>
+                        <tbody>${payrollRows}</tbody>
+                        <tfoot class="bg-slate-100 font-bold">
+                            <tr>
+                                <td colspan="3" class="py-4 px-4 text-right">TOTALS:</td>
+                                <td class="py-4 px-4 text-right">${currencyFormatter.format(totals.grossPay)}</td>
+                                <td class="py-4 px-4 text-right text-red-600">${currencyFormatter.format(totals.advances)}</td>
+                                <td class="py-4 px-4 text-right text-blue-600">${currencyFormatter.format(totals.deductions)}</td>
+                                <td class="py-4 px-4 text-right text-green-600">${currencyFormatter.format(totals.netPayable)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="mt-4 text-sm text-slate-600">
+                    <p><strong>Note:</strong> Hours calculated from clock-in/out logs. Net Pay = Gross Pay - Advances - Deductions</p>
+                </div>`;
+        };
+
+        const renderAttendanceLogPage = () => {
+            const page = mainContent.querySelector('#attendance');
+            if (!page) return;
+
+            const sortedLogs = [...attendanceLogData].sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
+
+            const logRows = sortedLogs.map(log => {
+                const date = log.timestamp?.toDate();
+                const dateStr = date ? date.toLocaleString('en-IN', { 
+                    day: '2-digit', 
+                    month: 'short', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }) : 'N/A';
+                
+                const site = sitesData.find(s => s.id === log.siteId);
+                const actionClass = log.action === 'Work Started' ? 'text-green-600' : 'text-red-600';
+                
+                return `
+                    <tr class="border-b border-slate-200 hover:bg-slate-50">
+                        <td class="py-4 px-6">${dateStr}</td>
+                        <td class="py-4 px-6 font-medium text-slate-800">${log.laborerName}</td>
+                        <td class="py-4 px-6">${site?.name || 'Unknown Site'}</td>
+                        <td class="py-4 px-6 ${actionClass} font-semibold">${log.action}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            page.innerHTML = `
+                <h2 class="text-3xl font-bold text-slate-800 mb-6">Attendance Log</h2>
+                <div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b-2 border-slate-200">
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date & Time</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Worker</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th>
+                                <th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>${logRows.length > 0 ? logRows : '<tr><td colspan="4" class="py-8 text-center text-slate-500">No attendance records yet</td></tr>'}</tbody>
+                    </table>
+                </div>`;
         };
         
         const renderSitesPage = () => {
              const page = mainContent.querySelector('#sites');
              if(!page) return;
              let tableRows = sitesData.map(site => `<tr class="border-b border-slate-200 hover:bg-slate-50"><td class="py-4 px-6 font-medium text-slate-800">${site.name}</td><td class="py-4 px-6 text-slate-600">${site.location}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-site" data-id="${site.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Site"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-site" data-id="${site.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Site"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
-             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Sites</h2><button data-action="add-site" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Site</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Sites</h2><button data-action="add-site" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Site</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows.length > 0 ? tableRows : '<tr><td colspan="3" class="py-8 text-center text-slate-500">No sites yet. Add your first site!</td></tr>'}</tbody></table></div>`;
         };
         
         const renderLaborersPage = () => {
@@ -295,7 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div></td>
                 </tr>`
             }).join('');
-            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Workers</h2><button data-action="add-laborer" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Worker</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Status</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+            page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Workers</h2><button data-action="add-laborer" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Worker</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Status</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows.length > 0 ? tableRows : '<tr><td colspan="5" class="py-8 text-center text-slate-500">No workers yet. Add your first worker!</td></tr>'}</tbody></table></div>`;
         };
         
         const renderExpensesPage = () => {
@@ -303,13 +845,8 @@ document.addEventListener('DOMContentLoaded', () => {
              if(!page) return;
              const sortedExpenses = [...expensesData].sort((a,b) => new Date(b.date) - new Date(a.date));
              let tableRows = sortedExpenses.map(e => `<tr class="border-b border-slate-200 hover:bg-slate-50"><td class="py-4 px-6">${e.date}</td><td class="py-4 px-6">${sitesData.find(s=>s.id===e.siteId)?.name ||'N/A'}</td><td class="py-4 px-6">${e.description}</td><td class="py-4 px-6 text-right">${currencyFormatter.format(e.amount)}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-expense" data-id="${e.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-expense" data-id="${e.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
-             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Track Expenses</h2><button data-action="add-expense" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Expense</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Description</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Amount</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Track Expenses</h2><button data-action="add-expense" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Expense</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Description</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Amount</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows.length > 0 ? tableRows : '<tr><td colspan="5" class="py-8 text-center text-slate-500">No expenses yet. Add your first expense!</td></tr>'}</tbody></table></div>`;
         };
-        
-        const renderProjectSummaryPage = async () => { /* ... full implementation ... */ };
-        const renderDailyTasksPage = () => { /* ... full implementation ... */ };
-        const renderPayrollPage = async () => { /* ... full implementation ... */ };
-        const renderAttendanceLogPage = () => { /* ... full implementation ... */ };
 
         const routes = {
             '#dashboard': renderDashboardPage,
@@ -386,6 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (action === 'manage-docs') openDocumentsModal(laborersData.find(l => l.id === id));
             if (action === 'manage-finances') openFinancesModal(laborersData.find(l => l.id === id));
+            if (action === 'assign-task') openTaskModal(id ? laborersData.find(l => l.id === id) : null);
         });
 
         onSnapshot(query(collection(db, "sites")), snap => { sitesData = snap.docs.map(d => ({ id: d.id, ...d.data() })); handleNavigation(); }, console.error);
@@ -397,4 +935,3 @@ document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
     }
 });
-
