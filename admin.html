@@ -25,23 +25,38 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Style for language switcher */
+        .lang-btn {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .lang-btn.active {
+            background-color: #f59e0b;
+            color: #1e293b;
+        }
+        .lang-btn:not(.active) {
+            background-color: #475569;
+            color: #f1f5f9;
+        }
     </style>
 </head>
 <body>
     <div id="login-modal" class="fixed inset-0 bg-zinc-900 bg-opacity-80 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-2xl shadow-lg text-center w-full max-w-sm">
             <h1 class="text-3xl font-bold text-slate-800">Shreeved</h1>
-            <p class="text-slate-500 mt-2">Admin Login</p>
+            <p class="text-slate-500 mt-2" data-translate-key="admin_login">Admin Login</p>
             <form id="login-form" class="mt-8 space-y-4">
                 <div>
                     <label for="email-input" class="sr-only">Email</label>
-                    <input type="email" id="email-input" class="w-full p-3 text-left border-2 border-slate-200 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="Email Address" required>
+                    <input type="email" id="email-input" class="w-full p-3 text-left border-2 border-slate-200 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="Email Address" required data-translate-key="placeholder_email">
                 </div>
                 <div>
                     <label for="password-input" class="sr-only">Password</label>
-                    <input type="password" id="password-input" class="w-full p-3 text-left border-2 border-slate-200 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="Password" required>
+                    <input type="password" id="password-input" class="w-full p-3 text-left border-2 border-slate-200 rounded-lg focus:ring-amber-500 focus:border-amber-500" placeholder="Password" required data-translate-key="placeholder_password">
                 </div>
-                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-3 rounded-lg shadow-sm">Login</button>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-3 rounded-lg shadow-sm" data-translate-key="login">Login</button>
                 <p id="login-error" class="text-red-500 h-4 mt-2"></p>
             </form>
         </div>
@@ -50,7 +65,7 @@
     <div id="dashboard-content" class="secure-content">
         <header class="md:hidden sticky top-0 bg-slate-800 text-white p-4 z-20 flex items-center justify-between shadow-md">
             <button id="mobile-menu-btn" class="p-2 -ml-2">
-                <svg xmlns="http://www.w.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
             <h1 class="text-xl font-bold">Shreeved</h1>
             <div class="w-6"></div> 
@@ -65,21 +80,28 @@
                     <h1 class="text-2xl font-bold">Shreeved</h1>
                 </div>
                 <nav class="flex-1 px-2 space-y-2">
-                    <a href="#dashboard" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Dashboard</a>
-                    <a href="#summary" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Project Summary</a>
-                    <a href="#tasks" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Daily Tasks</a>
-                    <a href="#payroll" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Payroll</a>
-                    <a href="#sites" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Sites</a>
-                    <a href="#workers" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Workers</a>
-                    <a href="#expenses" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Expenses</a>
-                    <a href="#attendance" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Attendance Log</a>
-                    <a href="/worker.html" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200">Worker Check-in</a>
+                    <a href="#dashboard" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_dashboard">Dashboard</a>
+                    <a href="#summary" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_summary">Project Summary</a>
+                    <a href="#tasks" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_tasks">Daily Tasks</a>
+                    <a href="#payroll" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_payroll">Payroll</a>
+                    <a href="#sites" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_sites">Sites</a>
+                    <a href="#workers" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_workers">Workers</a>
+                    <a href="#expenses" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_expenses">Expenses</a>
+                    <a href="#attendance" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_attendance">Attendance Log</a>
+                    <a href="/worker.html" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_worker_checkin">Worker Check-in</a>
                 </nav>
                 <div class="px-2 py-4 border-t border-slate-700">
-                     <button id="logout-btn" class="w-full text-left flex items-center px-4 py-2.5 rounded-lg text-slate-300 hover:bg-red-500 hover:text-white transition-colors duration-200">Logout</button>
+                    <div id="language-switcher" class="flex justify-around items-center mb-4">
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn" data-lang="hi">HI</button>
+                        <button class="lang-btn" data-lang="mr">MR</button>
+                    </div>
+                     <button id="logout-btn" class="w-full text-left flex items-center px-4 py-2.5 rounded-lg text-slate-300 hover:bg-red-500 hover:text-white transition-colors duration-200" data-translate-key="logout">Logout</button>
                 </div>
             </aside>
-            <main class="flex-1 p-6 lg:p-8 overflow-y-auto"></main>
+            <main class="flex-1 p-6 lg:p-8 overflow-y-auto">
+                <!-- Page content will be injected here -->
+            </main>
         </div>
     </div>
     
