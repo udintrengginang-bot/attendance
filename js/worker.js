@@ -171,6 +171,7 @@ async function load7DayHistory() {
         
         const logsByDate = {};
         logs.forEach(log => {
+            if (!log.timestamp) return;
             const date = log.timestamp.toDate().toLocaleDateString('en-IN');
             if (!logsByDate[date]) logsByDate[date] = [];
             logsByDate[date].push(log);
@@ -220,6 +221,10 @@ async function load7DayHistory() {
         }
     } catch (error) {
         console.error("Error loading history:", error);
+        // Show friendly message instead of error
+        if (historyList) {
+            historyList.innerHTML = '<p class="text-slate-500 text-center">Unable to load work history. Please check your connection.</p>';
+        }
     }
 }
 
