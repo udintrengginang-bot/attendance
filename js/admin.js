@@ -107,31 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
              modal.querySelector('.modal-cancel-btn')?.addEventListener('click', closeModal);
         };
 
-        const renderDashboardPage = async () => { /* ... full implementation ... */ };
-        const renderSitesPage = () => { /* ... full implementation ... */ };
-        const renderLaborersPage = () => { /* ... full implementation ... */ };
-        const renderExpensesPage = () => { /* ... full implementation ... */ };
-        const renderPayrollPage = () => { /* ... full implementation ... */ };
-        const renderProjectSummaryPage = () => { /* ... full implementation ... */ };
-        const renderDailyTasksPage = () => { /* ... full implementation ... */ };
-        const renderAttendanceLogPage = () => { /* ... full implementation ... */ };
-        
-        const calculatePayroll = async (start, end) => { /* ... full implementation ... */ };
-        const calculateAllLaborCost = async (start, end) => { /* ... full implementation ... */ };
-        const calculateAllExpenseCost = (start, end) => { /* ... full implementation ... */ };
-        const calculateLaborCostForSite = async (siteId, start, end) => { /* ... full implementation ... */ };
-        const calculateExpenseCostForSite = (siteId, start, end) => { /* ... full implementation ... */ };
-
-        const openSiteModal = (site = {}) => { /* ... full implementation ... */ };
-        const openLaborerModal = (laborer = {}) => { /* ... full implementation ... */ };
-        const openExpenseModal = (expense = {}) => { /* ... full implementation ... */ };
-        const openDocumentsModal = (laborer) => { /* ... full implementation ... */ };
-        const openFinancesModal = (laborer) => { /* ... full implementation ... */ };
-        const showConfirmationModal = (message, onConfirm) => { /* ... full implementation ... */ };
-
-        // --- FULL IMPLEMENTATIONS START HERE ---
-
-        renderDashboardPage = async () => {
+        const renderDashboardPage = async () => {
             const page = mainContent.querySelector('#dashboard');
             if (!page) return;
             const activeWorkers = laborersData.filter(l => l.status === 'Work Started').length;
@@ -157,14 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
         };
 
-        renderSitesPage = () => {
+        const renderSitesPage = () => {
              const page = mainContent.querySelector('#sites');
              if(!page) return;
              let tableRows = sitesData.map(site => `<tr class="border-b border-slate-200 hover:bg-slate-50"><td class="py-4 px-6 font-medium text-slate-800">${site.name}</td><td class="py-4 px-6 text-slate-600">${site.location}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-site" data-id="${site.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Site"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-site" data-id="${site.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Site"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
              page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Sites</h2><button data-action="add-site" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Site</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Location</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
-        renderLaborersPage = () => {
+        const renderLaborersPage = () => {
             const page = mainContent.querySelector('#laborers');
             if(!page) return;
             let tableRows = laborersData.map(l => {
@@ -189,27 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Manage Workers</h2><button data-action="add-laborer" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Worker</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Name</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Assigned Sites</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Mobile</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Status</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
         };
         
-        renderExpensesPage = () => { /* ... full implementation ... */ };
-        renderPayrollPage = () => { /* ... full implementation ... */ };
-        renderProjectSummaryPage = () => { /* ... full implementation ... */ };
-        renderDailyTasksPage = () => { /* ... full implementation ... */ };
-        renderAttendanceLogPage = () => { /* ... full implementation ... */ };
-        
-        // --- Full calculation functions ---
-        calculatePayroll = async (start, end) => { /* ... full implementation ... */ };
-        calculateAllLaborCost = async (start, end) => { /* ... full implementation ... */ };
-        calculateAllExpenseCost = (start, end) => { /* ... full implementation ... */ };
-        calculateLaborCostForSite = async (siteId, start, end) => { /* ... full implementation ... */ };
-        calculateExpenseCostForSite = (siteId, start, end) => { /* ... full implementation ... */ };
-        
-        // --- Full modal functions ---
-        openSiteModal = (site = {}) => { /* ... full implementation ... */ };
-        openLaborerModal = (laborer = {}) => { /* ... full implementation ... */ };
-        openExpenseModal = (expense = {}) => { /* ... full implementation ... */ };
-        openDocumentsModal = (laborer) => { /* ... full implementation ... */ };
-        openFinancesModal = (laborer) => { /* ... full implementation ... */ };
-        showConfirmationModal = (message, onConfirm) => { /* ... full implementation ... */ };
-
+        renderExpensesPage = () => {
+             const page = mainContent.querySelector('#expenses');
+             if(!page) return;
+             const sortedExpenses = [...expensesData].sort((a,b) => new Date(b.date) - new Date(a.date));
+             let tableRows = sortedExpenses.map(e => `<tr class="border-b border-slate-200 hover:bg-slate-50"><td class="py-4 px-6">${e.date}</td><td class="py-4 px-6">${sitesData.find(s=>s.id===e.siteId)?.name ||'N/A'}</td><td class="py-4 px-6">${e.description}</td><td class="py-4 px-6 text-right">${currencyFormatter.format(e.amount)}</td><td class="py-4 px-6 text-right"><div class="flex items-center justify-end space-x-4"><button data-action="edit-expense" data-id="${e.id}" class="text-slate-500 hover:text-blue-600 action-icon" title="Edit Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-action="delete-expense" data-id="${e.id}" class="text-slate-500 hover:text-red-600 action-icon" title="Delete Expense"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button></div></td></tr>`).join('');
+             page.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-3xl font-bold text-slate-800">Track Expenses</h2><button data-action="add-expense" class="bg-amber-500 hover:bg-amber-600 font-bold py-2 px-5 rounded-lg shadow-sm transition-colors">Add New Expense</button></div><div class="bg-white p-2 sm:p-4 rounded-xl shadow-lg overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b-2 border-slate-200"><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Date</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Site</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase">Description</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Amount</th><th class="py-3 px-6 text-sm font-semibold text-slate-500 uppercase text-right">Actions</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+        };
 
         const routes = {
             '#dashboard': renderDashboardPage,
@@ -234,13 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const renderFunc = routes[hash];
                 if (renderFunc) {
                     showLoading(currentPageElement);
-                    setTimeout(() => renderFunc(), 50); // Small delay to ensure loader shows
+                    setTimeout(() => renderFunc(), 50);
                 }
             } else {
                  const dashboardPage = document.getElementById('dashboard');
-                 dashboardPage.classList.remove('hidden');
-                 showLoading(dashboardPage);
-                 setTimeout(() => renderDashboardPage(), 50);
+                 if (dashboardPage) {
+                    dashboardPage.classList.remove('hidden');
+                    showLoading(dashboardPage);
+                    setTimeout(() => renderDashboardPage(), 50);
+                 }
             }
         };
 
@@ -287,7 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (action === 'manage-docs') openDocumentsModal(laborersData.find(l => l.id === id));
             if (action === 'manage-finances') openFinancesModal(laborersData.find(l => l.id === id));
 
-            if (action === 'save-task') { /* ... save individual task logic ... */ }
         });
 
         onSnapshot(query(collection(db, "sites")), snap => { sitesData = snap.docs.map(d => ({ id: d.id, ...d.data() })); handleNavigation(); }, console.error);
@@ -299,3 +262,4 @@ document.addEventListener('DOMContentLoaded', () => {
         handleNavigation();
     }
 });
+
