@@ -1,4 +1,6 @@
-const CACHE_NAME = 'shreeved-v1.0.0';
+// Automatic version based on build time - updates automatically on each deploy
+const CACHE_VERSION = '2025-01-15-' + new Date().getTime();
+const CACHE_NAME = 'shreeved-' + CACHE_VERSION;
 const OFFLINE_URL = '/offline.html';
 
 const urlsToCache = [
@@ -11,9 +13,12 @@ const urlsToCache = [
     '/manifest.json'
 ];
 
-// Install event - cache essential files
+// Install event - cache essential files and force immediate activation
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Installing...');
+    console.log('[Service Worker] Installing... Version:', CACHE_VERSION);
+    
+    // Force this service worker to become active immediately
+    self.skipWaiting();
     
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -24,27 +29,33 @@ self.addEventListener('install', (event) => {
                     // Continue even if some resources fail
                 });
             })
-            .then(() => self.skipWaiting())
     );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and take control immediately
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Activating...');
+    console.log('[Service Worker] Activating... Version:', CACHE_VERSION);
     
     event.waitUntil(
         caches.keys()
             .then(cacheNames => {
                 return Promise.all(
                     cacheNames.map(cacheName => {
-                        if (cacheName !== CACHE_NAME) {
+                        // Delete all old caches that don't match current version
+                        if (cacheName.startsWith('shreeved-') && cacheName !== CACHE_NAME) {
                             console.log('[Service Worker] Deleting old cache:', cacheName);
                             return caches.delete(cacheName);
                         }
                     })
                 );
             })
-            .then(() => self.clients.claim())
+            .then(() => {
+                // Force the service worker to take control of all pages immediately
+                return self.clients.claim();
+            })
+            .then(() => {
+                console.log('[Service Worker] Now controlling all pages');
+            })
     );
 });
 
