@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f59e0b">
+    <title>Shreeved - Admin Dashboard</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            font-size: 18px;
+        }
+        .dark-mode {
+            background-color: #1e293b;
+            color: #f1f5f9;
+        }
+        .dark-mode .card-bg { background-color: #334155; }
+        .dark-mode .text-dark { color: #f1f5f9; }
+        .dark-mode .border-color { border-color: #475569; }
+        .nav-item.active { 
+            background-color: #f59e0b; 
+            color: #1e293b; 
+            font-weight: 600; 
+        }
+        .sidebar-open #sidebar { transform: translateX(0); }
+        .sidebar-open #sidebar-overlay { display: block; }
+        .loader { 
+            border: 4px solid #f3f3f3; 
+            border-radius: 50%; 
+            border-top: 4px solid #f59e0b; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+        }
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        .lang-btn.active { 
+            background-color: #f59e0b; 
+            color: #1e293b; 
+        }
+        .quick-action-btn {
+            min-height: 80px;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-900 bg-opacity-80 flex items-center justify-center z-50">
+        <div class="card-bg bg-white rounded-2xl shadow-2xl p-8 sm:p-12 w-full max-w-md m-4">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 text-dark" data-translate-key="admin_login">Admin Login</h2>
+                <div id="language-switcher" class="flex items-center border border-slate-200 border-color rounded-lg p-1">
+                    <button data-lang="en" class="lang-btn active text-xs font-bold py-1 px-2 rounded-md transition-colors" title="English">EN</button>
+                    <button data-lang="hi" class="lang-btn text-xs font-bold py-1 px-2 rounded-md transition-colors" title="Hindi">HI</button>
+                    <button data-lang="mr" class="lang-btn text-xs font-bold py-1 px-2 rounded-md transition-colors" title="Marathi">MR</button>
+                </div>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <input type="email" id="email-input" placeholder="Email Address" data-translate-key="placeholder_email" required class="w-full p-4 border border-slate-300 border-color rounded-lg text-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                </div>
+                <div>
+                    <input type="password" id="password-input" placeholder="Password" data-translate-key="placeholder_password" required class="w-full p-4 border border-slate-300 border-color rounded-lg text-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition">
+                </div>
+                <p id="login-error" class="text-red-500 text-sm min-h-[20px]"></p>
+                <div>
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-4 px-6 rounded-lg text-lg transition-transform transform hover:scale-105 shadow-md" data-translate-key="login">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboard-content" class="hidden">
+        
+        <!-- Mobile Header -->
+        <header class="md:hidden sticky top-0 bg-slate-800 text-white p-4 z-20 flex items-center justify-between shadow-md">
+            <button id="mobile-menu-btn" class="p-2 -ml-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <h1 class="text-xl font-bold">Shreeved</h1>
+            <button id="dark-mode-toggle-mobile" class="p-2">
+                <span class="text-xl">🌙</span>
+            </button>
+        </header>
+
+        <div class="relative min-h-screen md:flex">
+            
+            <!-- Sidebar Overlay (Mobile) -->
+            <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"></div>
+            
+            <!-- Sidebar -->
+            <aside id="sidebar" class="card-bg bg-slate-800 text-slate-100 w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 z-40 flex flex-col transition-transform duration-300 ease-in-out">
+                
+                <!-- Logo -->
+                <div class="h-20 flex items-center justify-between px-4 bg-slate-900 border-b border-slate-700 -mt-7 -mx-2 mb-6">
+                    <h1 class="text-2xl font-bold">Shreeved</h1>
+                    <button id="dark-mode-toggle-desktop" class="p-2 rounded hover:bg-slate-700">
+                        <span class="text-xl">🌙</span>
+                    </button>
+                </div>
+                
+                <!-- Navigation -->
+                <nav class="flex-1 px-2 space-y-2">
+                    <a href="#home" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_home">
+                        🏠 Home
+                    </a>
+                    <a href="#dashboard" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_dashboard">
+                        📊 Dashboard
+                    </a>
+                    <a href="#workers" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_workers">
+                        👥 Workers
+                    </a>
+                    <a href="#sites" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_sites">
+                        📍 Sites
+                    </a>
+                    <a href="#tasks" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_tasks">
+                        📋 Daily Tasks
+                    </a>
+                    <a href="#summary" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_summary">
+                        📈 Project Summary
+                    </a>
+                    <a href="#payroll" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_payroll">
+                        💰 Payroll
+                    </a>
+                    <a href="#expenses" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_expenses">
+                        💵 Expenses
+                    </a>
+                    <a href="#attendance" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_attendance">
+                        📝 Attendance Log
+                    </a>
+                    <a href="#gallery" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_gallery">
+                        📸 Photo Gallery
+                    </a>
+                    <a href="/worker" target="_blank" class="nav-item flex items-center px-4 py-2.5 rounded-lg hover:bg-slate-700 transition-colors duration-200" data-translate-key="nav_worker_checkin">
+                        🔗 Worker Portal
+                    </a>
+                </nav>
+                
+                <!-- Logout -->
+                <div class="px-2 py-4 border-t border-slate-700">
+                    <button id="logout-btn" class="w-full text-left flex items-center px-4 py-2.5 rounded-lg text-slate-300 hover:bg-red-500 hover:text-white transition-colors duration-200" data-translate-key="logout">
+                        🚪 Logout
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+                
+                <!-- Home Page (Quick Actions) -->
+                <section id="home" class="page-content">
+                    <div class="max-w-6xl mx-auto">
+                        <h2 class="text-3xl font-bold text-slate-800 text-dark mb-2" data-translate-key="welcome_admin">Welcome, Admin!</h2>
+                        <p class="text-slate-600 text-dark mb-8" data-translate-key="quick_actions_subtitle">Quick access to your most common tasks</p>
+                        
+                        <!-- Today's Overview -->
+                        <div id="today-overview" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <div class="stat-card card-bg bg-white p-6 rounded-xl shadow-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-slate-500 text-dark text-sm" data-translate-key="active_now">Active Now</p>
+                                        <p id="active-workers-count" class="text-4xl font-bold text-green-600 mt-1">-</p>
+                                    </div>
+                                    <span class="text-5xl">👥</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card-bg bg-white p-6 rounded-xl shadow-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-slate-500 text-dark text-sm" data-translate-key="sites_active">Sites Active</p>
+                                        <p id="active-sites-count" class="text-4xl font-bold text-blue-600 mt-1">-</p>
+                                    </div>
+                                    <span class="text-5xl">📍</span>
+                                </div>
+                            </div>
+                            <div class="stat-card card-bg bg-white p-6 rounded-xl shadow-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-slate-500 text-dark text-sm" data-translate-key="today_cost">Today's Cost</p>
+                                        <p id="today-cost" class="text-4xl font-bold text-amber-600 mt-1">-</p>
+                                    </div>
+                                    <span class="text-5xl">💰</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <h3 class="text-2xl font-bold text-slate-800 text-dark mb-4" data-translate-key="quick_actions">Quick Actions</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                            <button data-action="check-workers" class="quick-action-btn card-bg bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-6 rounded-xl shadow-lg text-left">
+                                <span class="text-4xl mb-2 block">👥</span>
+                                <span class="font-bold text-xl" data-translate-key="check_active_workers">Check Active Workers</span>
+                            </button>
+                            <button data-action="manage-sites" class="quick-action-btn card-bg bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-6 rounded-xl shadow-lg text-left">
+                                <span class="text-4xl mb-2 block">📍</span>
+                                <span class="font-bold text-xl" data-translate-key="manage_sites">Manage Sites</span>
+                            </button>
+                            <button data-action="assign-tasks" class="quick-action-btn card-bg bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-6 rounded-xl shadow-lg text-left">
+                                <span class="text-4xl mb-2 block">📋</span>
+                                <span class="font-bold text-xl" data-translate-key="assign_tasks">Assign Daily Tasks</span>
+                            </button>
+                            <button data-action="project-summary" class="quick-action-btn card-bg bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white p-6 rounded-xl shadow-lg text-left">
+                                <span class="text-4xl mb-2 block">📈</span>
+                                <span class="font-bold text-xl" data-translate-key="project_summary">Project Summary</span>
+                            </button>
+                            <button data-action="view-payroll" class="quick-action-btn card-bg bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white p-6 rounded-xl shadow-lg text-left">
+                                <span class="text-4xl mb-2 block">💰</span>
+                                <span class="font-bold text-xl" data-translate-key="view_payroll">View Payroll</span>
+                            </button>
+                            <button data-action="add-expense" class="quick-action-btn card-bg bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white p-6 rounded-xl shadow-lg text-left">
+                                <span class="text-4xl mb-2 block">💵</span>
+                                <span class="font-bold text-xl" data-translate-key="add_expense">Add Expense</span>
+                            </button>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <h3 class="text-2xl font-bold text-slate-800 text-dark mb-4" data-translate-key="recent_activity">Recent Activity</h3>
+                        <div id="recent-activity" class="card-bg bg-white rounded-xl shadow-lg p-6">
+                            <div class="space-y-3" id="activity-list">
+                                <div class="flex justify-center items-center p-8">
+                                    <div class="loader"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Other Page Sections (will be populated by JS) -->
+                <section id="dashboard" class="page-content hidden"></section>
+                <section id="workers" class="page-content hidden"></section>
+                <section id="sites" class="page-content hidden"></section>
+                <section id="tasks" class="page-content hidden"></section>
+                <section id="summary" class="page-content hidden"></section>
+                <section id="payroll" class="page-content hidden"></section>
+                <section id="expenses" class="page-content hidden"></section>
+                <section id="attendance" class="page-content hidden"></section>
+                <section id="gallery" class="page-content hidden"></section>
+
+                <!-- Modal Container -->
+                <div id="form-modal" class="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center hidden z-40 overflow-y-auto p-4"></div>
+
+            </main>
+        </div>
+    </div>
+
+    <script type="module" src="/js/admin.js"></script>
+</body>
+</html>
