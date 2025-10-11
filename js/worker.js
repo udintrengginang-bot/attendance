@@ -40,7 +40,7 @@ function setLanguage(lang) {
     localStorage.setItem('shreeved-lang-worker', lang);
     document.querySelectorAll('[data-translate-key]').forEach(el => {
         const key = el.dataset.translateKey;
-        const translation = translations[lang][key] || translations['en'][key];
+        const translation = translations[lang]?.[key] || translations['en'][key];
         if (el.placeholder) el.placeholder = translation;
         else el.textContent = translation;
     });
@@ -69,19 +69,60 @@ document.addEventListener('DOMContentLoaded', () => {
     let sitesData = [];
 
     const updateStatusUI = (status) => {
-        // ... implementation ...
+        if (!workerStatusEl) return;
+        
+        const isStarted = status === 'Work Started';
+        workerStatusEl.textContent = isStarted ? translations[currentLanguage].status_started : translations[currentLanguage].status_ended;
+        workerStatusEl.className = `mt-1 text-sm font-semibold py-1 px-3 rounded-full inline-block ${isStarted ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+
+        startWorkBtn.classList.toggle('hidden', isStarted);
+        endWorkBtn.classList.toggle('hidden', !isStarted);
+        siteSelectionView.classList.toggle('hidden', isStarted);
     };
 
     const showDashboard = (worker) => {
-        // ... implementation ...
+        currentWorker = worker;
+        loginView.classList.add('hidden');
+        dashboardView.classList.remove('hidden');
+        
+        workerNameEl.textContent = `${translations[currentLanguage].welcome}, ${worker.name}`;
+        
+        if (worker.currentTask) {
+            taskDescriptionEl.textContent = worker.currentTask;
+            taskView.classList.remove('hidden');
+        } else {
+            taskView.classList.add('hidden');
+        }
+
+        const assignedSites = sitesData.filter(s => worker.assignedSiteIds?.includes(s.id));
+        if (assignedSites.length > 0) {
+            siteSelect.innerHTML = assignedSites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            siteSelectionView.classList.remove('hidden');
+        } else {
+            siteSelect.innerHTML = `<option>${translations[currentLanguage].no_sites}</option>`;
+            startWorkBtn.disabled = true;
+            startWorkBtn.textContent = translations[currentLanguage].contact_admin;
+        }
+        
+        updateStatusUI(worker.status);
     };
     
     const showLogin = () => {
-        // ... implementation ...
+        currentWorker = null;
+        loginView.classList.remove('hidden');
+        dashboardView.classList.add('hidden');
+        loginForm.reset();
     };
     
     const createLog = async (action, siteId) => {
-       // ... implementation ...
+       if(!currentWorker) return;
+       await addDoc(collection(db, "attendance_logs"), {
+           laborerId: currentWorker.id,
+           laborerName: currentWorker.name,
+           action: action,
+           siteId: siteId,
+           timestamp: serverTimestamp()
+       });
     };
     
     loginForm.addEventListener('submit', async (e) => {
@@ -89,23 +130,49 @@ document.addEventListener('DOMContentLoaded', () => {
         loginError.textContent = '';
         const mobileNumber = document.getElementById('mobile-number').value;
         const pin = document.getElementById('pin').value;
-        // Use 'laborers' to match the database collection name
+        
         const q = query(collection(db, 'laborers'), where('mobileNumber', '==', mobileNumber), where('pin', '==', pin));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            loginError.textContent = 'Invalid mobile number or PIN.';
-        } else {
-            const workerDoc = querySnapshot.docs[0];
-            showDashboard({ id: workerDoc.id, ...workerDoc.data() });
+        try {
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                loginError.textContent = 'Invalid mobile number or PIN.';
+            } else {
+                const workerDoc = querySnapshot.docs[0];
+                currentWorker = { id: workerDoc.id, ...workerDoc.data() };
+                showDashboard(currentWorker);
+            }
+        } catch (error) {
+            console.error("Login query failed:", error);
+            loginError.textContent = "An error occurred. Please try again.";
         }
     });
 
-    startWorkBtn.addEventListener('click', async () => { /* ... implementation ... */ });
-    endWorkBtn.addEventListener('click', async () => { /* ... implementation ... */ });
-    logoutBtn.addEventListener('click', async () => { /* ... implementation ... */ });
+    startWorkBtn.addEventListener('click', async () => {
+        if (!currentWorker || !siteSelect.value) return;
+        const selectedSiteId = siteSelect.value;
+        const newStatus = 'Work Started';
+        const workerRef = doc(db, 'laborers', currentWorker.id);
+        await updateDoc(workerRef, { status: newStatus, currentSiteId: selectedSiteId });
+        await createLog(newStatus, selectedSiteId);
+        currentWorker.status = newStatus;
+        updateStatusUI(newStatus);
+    });
+
+    endWorkBtn.addEventListener('click', async () => {
+        if (!currentWorker) return;
+        const newStatus = 'Work Ended';
+        const workerRef = doc(db, 'laborers', currentWorker.id);
+        await updateDoc(workerRef, { status: newStatus });
+        await createLog(newStatus, currentWorker.currentSiteId);
+        currentWorker.status = newStatus;
+        updateStatusUI(newStatus);
+    });
+
+    logoutBtn.addEventListener('click', showLogin);
+
     langSwitcher.addEventListener('click', (e) => {
-        if (e.target.matches('.lang-btn')) setLanguage(e.target.dataset.lang);
+        const button = e.target.closest('.lang-btn');
+        if (button) setLanguage(button.dataset.lang);
     });
 
     setLanguage(currentLanguage);
@@ -115,14 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const sitesSnapshot = await getDocs(collection(db, 'sites'));
                 sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                showLogin();
             } catch (error) {
                 console.error("Error fetching sites:", error);
-                document.body.innerHTML = "Error loading. Please refresh."
+                document.body.innerHTML = "Error loading application data. Please refresh the page."
             }
         } else {
             signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
         }
     });
 });
-
