@@ -31,19 +31,34 @@
             color: #f1f5f9;
         }
         
+        /* Dark mode text fixes */
         body.dark-mode .text-slate-800,
+        body.dark-mode .text-slate-700,
         body.dark-mode .text-slate-600 {
             color: #f1f5f9 !important;
         }
         
-        body.dark-mode .bg-slate-50 {
-            background-color: #1e293b !important;
+        body.dark-mode .bg-slate-50,
+        body.dark-mode .bg-teal-50,
+        body.dark-mode .bg-emerald-50,
+        body.dark-mode .bg-cyan-50 {
+            background-color: #334155 !important;
+        }
+        
+        /* Keep buttons readable in dark mode */
+        body.dark-mode .bg-slate-200 {
+            background-color: #475569 !important;
+            color: #f1f5f9 !important;
+        }
+        
+        body.dark-mode .bg-slate-200:hover {
+            background-color: #64748b !important;
         }
         
         /* Language button active state */
-        .lang-btn.active { 
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
+        .lang-btn.active, .lang-btn-dash.active { 
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: white !important;
             font-weight: 600;
         }
         
