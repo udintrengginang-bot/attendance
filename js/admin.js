@@ -1,202 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, query, addDoc, doc, updateDoc, deleteDoc, where, getDocs, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyArMFpT8YIkJhMGIEPTghKMCTTQsbAwK3I",
-    authDomain: "dad-attendance.firebaseapp.com",
-    projectId: "dad-attendance",
-    storageBucket: "dad-attendance.firebasestorage.app",
-    messagingSenderId: "626292583397",
-    appId: "1:626292583397:web:b0078d3a49840f38631d0c"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-
-const translations = {
-    en: { admin_login: "Admin Login", placeholder_email: "Email", placeholder_password: "Password", login: "Login" },
-    hi: { admin_login: "प्रशासक लॉगिन", placeholder_email: "ईमेल", placeholder_password: "पासवर्ड", login: "लॉग इन" },
-    mr: { admin_login: "प्रशासक लॉगिन", placeholder_email: "ईमेल", placeholder_password: "पासवर्ड", login: "लॉग इन" }
-};
-
-let currentLanguage = localStorage.getItem('shreeved-lang') || 'en';
-let sitesData = [], laborersData = [], expensesData = [], attendanceLogData = [], financesData = [], workPhotos = [];
-const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
-
-function setLanguage(lang) {
-    currentLanguage = lang;
-    localStorage.setItem('shreeved-lang', lang);
-    document.querySelectorAll('[data-translate-key]').forEach(el => {
-        const key = el.dataset.translateKey;
-        const translation = translations[lang]?.[key] || translations['en'][key];
-        el.placeholder ? el.placeholder = translation : el.textContent = translation;
-    });
-    document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
-}
-
-const showLoading = (el) => el && (el.innerHTML = `<div class="flex justify-center p-10"><div class="loader"></div></div>`);
-const closeModal = () => document.getElementById('form-modal')?.classList.add('hidden');
-const openModal = (content) => {
-    const modal = document.getElementById('form-modal');
-    if (!modal) return;
-    modal.innerHTML = content;
-    modal.classList.remove('hidden');
-    modal.querySelector('.modal-cancel-btn')?.addEventListener('click', closeModal);
-};
-
-const showConfirm = (msg, onConfirm) => {
-    openModal(`<div class="bg-white rounded-lg shadow-xl max-w-sm m-4 p-6">
-        <h3 class="text-lg font-bold mb-4">Confirm</h3>
-        <p class="mb-6">${msg}</p>
-        <div class="flex gap-3 justify-end">
-            <button class="modal-cancel-btn px-4 py-2 bg-slate-200 rounded-lg">Cancel</button>
-            <button id="confirm-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg">Confirm</button>
-        </div>
-    </div>`);
-    document.getElementById('confirm-btn').addEventListener('click', () => { onConfirm(); closeModal(); }, { once: true });
-};
-
-const calculateHours = (logs) => {
-    let total = 0, start = null;
-    logs.forEach(log => {
-        if (log.action === 'Work Started') start = log.timestamp.toDate();
-        else if (log.action === 'Work Ended' && start) {
-            total += (log.timestamp.toDate() - start) / 3600000;
-            start = null;
-        }
-    });
-    return total;
-};
-
-const calculatePayroll = async (startDate, endDate) => {
-    const payroll = {};
-    for (const laborer of laborersData) {
-        const logsQuery = query(collection(db, 'attendance_logs'),
-            where('laborerId', '==', laborer.id),
-            where('timestamp', '>=', Timestamp.fromDate(startDate)),
-            where('timestamp', '<=', Timestamp.fromDate(endDate)),
-            orderBy('timestamp', 'asc'));
-        const logs = (await getDocs(logsQuery)).docs.map(d => ({ ...d.data() }));
-        const hours = calculateHours(logs);
-        const gross = hours * (laborer.hourlyRate || 0);
-        const finances = financesData.filter(f => f.laborerId === laborer.id && new Date(f.date) >= startDate && new Date(f.date) <= endDate);
-        const advances = finances.filter(f => f.type === 'advance').reduce((s, f) => s + f.amount, 0);
-        const deductions = finances.filter(f => f.type === 'deduction').reduce((s, f) => s + f.amount, 0);
-        payroll[laborer.id] = { name: laborer.name, hours: hours.toFixed(1), rate: laborer.hourlyRate || 0, gross, advances, deductions, net: gross - advances - deductions };
-    }
-    return payroll;
-};
-
-const openSiteModal = (site = {}) => {
-    const isEdit = !!site.id;
-    openModal(`<div class="bg-white rounded-xl shadow-xl max-w-md m-4 p-6">
-        <h3 class="text-2xl font-bold mb-6">${isEdit ? 'Edit' : 'Add'} Site</h3>
-        <form id="site-form" class="space-y-4">
-            <input type="hidden" id="site-id" value="${site.id || ''}">
-            <div><label class="block font-semibold mb-2">Site Name</label>
-                <input type="text" id="site-name" value="${site.name || ''}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">Location</label>
-                <input type="text" id="site-location" value="${site.location || ''}" class="w-full p-3 border rounded-lg" required></div>
-            <div class="flex gap-3 justify-end pt-4">
-                <button type="button" class="modal-cancel-btn px-6 py-2 bg-slate-200 rounded-lg">Cancel</button>
-                <button type="submit" class="px-6 py-2 bg-amber-500 text-white rounded-lg font-semibold">Save</button>
-            </div>
-        </form>
-    </div>`);
-    document.getElementById('site-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('site-id').value;
-        const data = { name: document.getElementById('site-name').value, location: document.getElementById('site-location').value };
-        try {
-            id ? await updateDoc(doc(db, 'sites', id), data) : await addDoc(collection(db, 'sites'), data);
-            closeModal();
-        } catch (err) { alert('Error: ' + err.message); }
-    });
-};
-
-const openWorkerModal = (worker = {}) => {
-    const isEdit = !!worker.id;
-    const siteChecks = sitesData.map(s => `<label class="flex items-center gap-2">
-        <input type="checkbox" value="${s.id}" ${(worker.assignedSiteIds || []).includes(s.id) ? 'checked' : ''} class="site-check">
-        <span>${s.name}</span></label>`).join('');
-    openModal(`<div class="bg-white rounded-xl shadow-xl max-w-md m-4 p-6">
-        <h3 class="text-2xl font-bold mb-6">${isEdit ? 'Edit' : 'Add'} Worker</h3>
-        <form id="worker-form" class="space-y-4">
-            <input type="hidden" id="worker-id" value="${worker.id || ''}">
-            <div><label class="block font-semibold mb-2">Name</label>
-                <input type="text" id="worker-name" value="${worker.name || ''}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">Mobile (10 digits)</label>
-                <input type="tel" id="worker-mobile" value="${worker.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">PIN (4 digits)</label>
-                <input type="text" id="worker-pin" value="${worker.pin || ''}" pattern="[0-9]{4}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">Hourly Rate (₹)</label>
-                <input type="number" id="worker-rate" value="${worker.hourlyRate || ''}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">Assign Sites</label>
-                <div class="border rounded-lg p-3 max-h-32 overflow-y-auto space-y-2">${siteChecks || '<p class="text-slate-500">No sites available</p>'}</div></div>
-            <div class="flex gap-3 justify-end pt-4">
-                <button type="button" class="modal-cancel-btn px-6 py-2 bg-slate-200 rounded-lg">Cancel</button>
-                <button type="submit" class="px-6 py-2 bg-amber-500 text-white rounded-lg font-semibold">Save</button>
-            </div>
-        </form>
-    </div>`);
-    document.getElementById('worker-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('worker-id').value;
-        const data = {
-            name: document.getElementById('worker-name').value,
-            mobileNumber: document.getElementById('worker-mobile').value,
-            pin: document.getElementById('worker-pin').value,
-            hourlyRate: parseFloat(document.getElementById('worker-rate').value),
-            assignedSiteIds: Array.from(document.querySelectorAll('.site-check:checked')).map(cb => cb.value)
-        };
-        try {
-            id ? await updateDoc(doc(db, 'laborers', id), data) : await addDoc(collection(db, 'laborers'), { ...data, status: 'Work Ended' });
-            closeModal();
-        } catch (err) { alert('Error: ' + err.message); }
-    });
-};
-
-const openExpenseModal = (expense = {}) => {
-    const isEdit = !!expense.id;
-    const siteOpts = sitesData.map(s => `<option value="${s.id}" ${s.id === expense.siteId ? 'selected' : ''}>${s.name}</option>`).join('');
-    openModal(`<div class="bg-white rounded-xl shadow-xl max-w-md m-4 p-6">
-        <h3 class="text-2xl font-bold mb-6">${isEdit ? 'Edit' : 'Add'} Expense</h3>
-        <form id="expense-form" class="space-y-4">
-            <input type="hidden" id="expense-id" value="${expense.id || ''}">
-            <div><label class="block font-semibold mb-2">Date</label>
-                <input type="date" id="expense-date" value="${expense.date || new Date().toISOString().split('T')[0]}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">Site</label>
-                <select id="expense-site" class="w-full p-3 border rounded-lg" required><option value="">Select Site</option>${siteOpts}</select></div>
-            <div><label class="block font-semibold mb-2">Description</label>
-                <input type="text" id="expense-desc" value="${expense.description || ''}" class="w-full p-3 border rounded-lg" required></div>
-            <div><label class="block font-semibold mb-2">Amount (₹)</label>
-                <input type="number" id="expense-amount" value="${expense.amount || ''}" class="w-full p-3 border rounded-lg" required></div>
-            <div class="flex gap-3 justify-end pt-4">
-                <button type="button" class="modal-cancel-btn px-6 py-2 bg-slate-200 rounded-lg">Cancel</button>
-                <button type="submit" class="px-6 py-2 bg-amber-500 text-white rounded-lg font-semibold">Save</button>
-            </div>
-        </form>
-    </div>`);
-    document.getElementById('expense-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('expense-id').value;
-        const data = {
-            date: document.getElementById('expense-date').value,
-            siteId: document.getElementById('expense-site').value,
-            description: document.getElementById('expense-desc').value,
-            amount: parseFloat(document.getElementById('expense-amount').value)
-        };
-        try {
-            id ? await updateDoc(doc(db, 'expenses', id), data) : await addDoc(collection(db, 'expenses'), data);
-            closeModal();
-        } catch (err) { alert('Error: ' + err.message); }
-    });
-};
-
 const openTasksModal = () => {
     const today = new Date().toISOString().split('T')[0];
     const workersBySite = {};
@@ -323,11 +124,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const cost = await calculatePayroll(today, tomorrow);
             const totalCost = Object.values(cost).reduce((s, w) => s + w.gross, 0);
             
-            document.getElementById('active-workers-count').textContent = active;
-            document.getElementById('active-sites-count').textContent = activeSites;
-            document.getElementById('today-cost').textContent = currencyFormatter.format(totalCost);
+            const activeCountEl = document.getElementById('active-workers-count');
+            const sitesCountEl = document.getElementById('active-sites-count');
+            const costEl = document.getElementById('today-cost');
+            
+            if (activeCountEl) activeCountEl.textContent = active;
+            if (sitesCountEl) sitesCountEl.textContent = activeSites;
+            if (costEl) costEl.textContent = currencyFormatter.format(totalCost);
             
             const activityList = document.getElementById('activity-list');
+            if (!activityList) return;
+            
             const recent = [...attendanceLogData].sort((a,b) => b.timestamp?.seconds - a.timestamp?.seconds).slice(0,10);
             activityList.innerHTML = recent.length ? recent.map(log => {
                 const site = sitesData.find(s => s.id === log.siteId);
@@ -534,4 +341,205 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-});
+});import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, query, addDoc, doc, updateDoc, deleteDoc, where, getDocs, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyArMFpT8YIkJhMGIEPTghKMCTTQsbAwK3I",
+    authDomain: "dad-attendance.firebaseapp.com",
+    projectId: "dad-attendance",
+    storageBucket: "dad-attendance.firebasestorage.app",
+    messagingSenderId: "626292583397",
+    appId: "1:626292583397:web:b0078d3a49840f38631d0c"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+const translations = {
+    en: { admin_login: "Admin Login", placeholder_email: "Email", placeholder_password: "Password", login: "Login" },
+    hi: { admin_login: "प्रशासक लॉगिन", placeholder_email: "ईमेल", placeholder_password: "पासवर्ड", login: "लॉग इन" },
+    mr: { admin_login: "प्रशासक लॉगिन", placeholder_email: "ईमेल", placeholder_password: "पासवर्ड", login: "लॉग इन" }
+};
+
+let currentLanguage = localStorage.getItem('shreeved-lang') || 'en';
+let sitesData = [], laborersData = [], expensesData = [], attendanceLogData = [], financesData = [], workPhotos = [];
+const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+
+function setLanguage(lang) {
+    currentLanguage = lang;
+    localStorage.setItem('shreeved-lang', lang);
+    document.querySelectorAll('[data-translate-key]').forEach(el => {
+        const key = el.dataset.translateKey;
+        const translation = translations[lang]?.[key] || translations['en'][key];
+        el.placeholder ? el.placeholder = translation : el.textContent = translation;
+    });
+    document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
+}
+
+const showLoading = (el) => el && (el.innerHTML = `<div class="flex justify-center p-10"><div class="loader"></div></div>`);
+const closeModal = () => document.getElementById('form-modal')?.classList.add('hidden');
+const openModal = (content) => {
+    const modal = document.getElementById('form-modal');
+    if (!modal) return;
+    modal.innerHTML = content;
+    modal.classList.remove('hidden');
+    modal.querySelector('.modal-cancel-btn')?.addEventListener('click', closeModal);
+};
+
+const showConfirm = (msg, onConfirm) => {
+    openModal(`<div class="bg-white rounded-lg shadow-xl max-w-sm m-4 p-6">
+        <h3 class="text-lg font-bold mb-4">Confirm</h3>
+        <p class="mb-6">${msg}</p>
+        <div class="flex gap-3 justify-end">
+            <button class="modal-cancel-btn px-4 py-2 bg-slate-200 rounded-lg">Cancel</button>
+            <button id="confirm-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg">Confirm</button>
+        </div>
+    </div>`);
+    document.getElementById('confirm-btn').addEventListener('click', () => { onConfirm(); closeModal(); }, { once: true });
+};
+
+const calculateHours = (logs) => {
+    let total = 0, start = null;
+    logs.forEach(log => {
+        if (log.action === 'Work Started') start = log.timestamp.toDate();
+        else if (log.action === 'Work Ended' && start) {
+            total += (log.timestamp.toDate() - start) / 3600000;
+            start = null;
+        }
+    });
+    return total;
+};
+
+const calculatePayroll = async (startDate, endDate) => {
+    const payroll = {};
+    for (const laborer of laborersData) {
+        const logsQuery = query(collection(db, 'attendance_logs'),
+            where('laborerId', '==', laborer.id),
+            where('timestamp', '>=', Timestamp.fromDate(startDate)),
+            where('timestamp', '<=', Timestamp.fromDate(endDate)),
+            orderBy('timestamp', 'asc'));
+        const logs = (await getDocs(logsQuery)).docs.map(d => ({ ...d.data() }));
+        const hours = calculateHours(logs);
+        const gross = hours * (laborer.hourlyRate || 0);
+        const finances = financesData.filter(f => f.laborerId === laborer.id && new Date(f.date) >= startDate && new Date(f.date) <= endDate);
+        const advances = finances.filter(f => f.type === 'advance').reduce((s, f) => s + f.amount, 0);
+        const deductions = finances.filter(f => f.type === 'deduction').reduce((s, f) => s + f.amount, 0);
+        payroll[laborer.id] = { name: laborer.name, hours: hours.toFixed(1), rate: laborer.hourlyRate || 0, gross, advances, deductions, net: gross - advances - deductions };
+    }
+    return payroll;
+};
+
+const openSiteModal = (site = {}) => {
+    const isEdit = !!site.id;
+    openModal(`<div class="bg-white rounded-xl shadow-xl max-w-md m-4 p-6">
+        <h3 class="text-2xl font-bold mb-6">${isEdit ? 'Edit' : 'Add'} Site</h3>
+        <form id="site-form" class="space-y-4">
+            <input type="hidden" id="site-id" value="${site.id || ''}">
+            <div><label class="block font-semibold mb-2">Site Name</label>
+                <input type="text" id="site-name" value="${site.name || ''}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">Location</label>
+                <input type="text" id="site-location" value="${site.location || ''}" class="w-full p-3 border rounded-lg" required></div>
+            <div class="flex gap-3 justify-end pt-4">
+                <button type="button" class="modal-cancel-btn px-6 py-2 bg-slate-200 rounded-lg">Cancel</button>
+                <button type="submit" class="px-6 py-2 bg-amber-500 text-white rounded-lg font-semibold">Save</button>
+            </div>
+        </form>
+    </div>`);
+    document.getElementById('site-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('site-id').value;
+        const data = { name: document.getElementById('site-name').value, location: document.getElementById('site-location').value };
+        try {
+            id ? await updateDoc(doc(db, 'sites', id), data) : await addDoc(collection(db, 'sites'), data);
+            closeModal();
+        } catch (err) { alert('Error: ' + err.message); }
+    });
+};
+
+const openWorkerModal = (worker = {}) => {
+    const isEdit = !!worker.id;
+    const siteChecks = sitesData.map(s => `<label class="flex items-center gap-2">
+        <input type="checkbox" value="${s.id}" ${(worker.assignedSiteIds || []).includes(s.id) ? 'checked' : ''} class="site-check">
+        <span>${s.name}</span></label>`).join('');
+    openModal(`<div class="bg-white rounded-xl shadow-xl max-w-md m-4 p-6">
+        <h3 class="text-2xl font-bold mb-6">${isEdit ? 'Edit' : 'Add'} Worker</h3>
+        <form id="worker-form" class="space-y-4">
+            <input type="hidden" id="worker-id" value="${worker.id || ''}">
+            <div><label class="block font-semibold mb-2">Name</label>
+                <input type="text" id="worker-name" value="${worker.name || ''}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">Mobile (10 digits)</label>
+                <input type="tel" id="worker-mobile" value="${worker.mobileNumber || ''}" pattern="[0-9]{10}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">PIN (4 digits)</label>
+                <input type="text" id="worker-pin" value="${worker.pin || ''}" pattern="[0-9]{4}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">Hourly Rate (₹)</label>
+                <input type="number" id="worker-rate" value="${worker.hourlyRate || ''}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">Assign Sites</label>
+                <div class="border rounded-lg p-3 max-h-32 overflow-y-auto space-y-2">${siteChecks || '<p class="text-slate-500">No sites available</p>'}</div></div>
+            <div class="flex gap-3 justify-end pt-4">
+                <button type="button" class="modal-cancel-btn px-6 py-2 bg-slate-200 rounded-lg">Cancel</button>
+                <button type="submit" class="px-6 py-2 bg-amber-500 text-white rounded-lg font-semibold">Save</button>
+            </div>
+        </form>
+    </div>`);
+    document.getElementById('worker-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('worker-id').value;
+        const data = {
+            name: document.getElementById('worker-name').value,
+            mobileNumber: document.getElementById('worker-mobile').value,
+            pin: document.getElementById('worker-pin').value,
+            hourlyRate: parseFloat(document.getElementById('worker-rate').value),
+            assignedSiteIds: Array.from(document.querySelectorAll('.site-check:checked')).map(cb => cb.value)
+        };
+        try {
+            id ? await updateDoc(doc(db, 'laborers', id), data) : await addDoc(collection(db, 'laborers'), { ...data, status: 'Work Ended' });
+            closeModal();
+        } catch (err) { alert('Error: ' + err.message); }
+    });
+};
+
+const openExpenseModal = (expense = {}) => {
+    const isEdit = !!expense.id;
+    const siteOpts = sitesData.map(s => `<option value="${s.id}" ${s.id === expense.siteId ? 'selected' : ''}>${s.name}</option>`).join('');
+    openModal(`<div class="bg-white rounded-xl shadow-xl max-w-md m-4 p-6">
+        <h3 class="text-2xl font-bold mb-6">${isEdit ? 'Edit' : 'Add'} Expense</h3>
+        <form id="expense-form" class="space-y-4">
+            <input type="hidden" id="expense-id" value="${expense.id || ''}">
+            <div><label class="block font-semibold mb-2">Date</label>
+                <input type="date" id="expense-date" value="${expense.date || new Date().toISOString().split('T')[0]}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">Site</label>
+                <select id="expense-site" class="w-full p-3 border rounded-lg" required><option value="">Select Site</option>${siteOpts}</select></div>
+            <div><label class="block font-semibold mb-2">Description</label>
+                <input type="text" id="expense-desc" value="${expense.description || ''}" class="w-full p-3 border rounded-lg" required></div>
+            <div><label class="block font-semibold mb-2">Amount (₹)</label>
+                <input type="number" id="expense-amount" value="${expense.amount || ''}" class="w-full p-3 border rounded-lg" required></div>
+            <div class="flex gap-3 justify-end pt-4">
+                <button type="button" class="modal-cancel-btn px-6 py-2 bg-slate-200 rounded-lg">Cancel</button>
+                <button type="submit" class="px-6 py-2 bg-amber-500 text-white rounded-lg font-semibold">Save</button>
+            </div>
+        </form>
+    </div>`);
+    document.getElementById('expense-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('expense-id').value;
+        const data = {
+            date: document.getElementById('expense-date').value,
+            siteId: document.getElementById('expense-site').value,
+            description: document.getElementById('expense-desc').value,
+            amount: parseFloat(document.getElementById('expense-amount').value)
+        };
+        try {
+            id ? await updateDoc(doc(db, 'expenses', id), data) : await addDoc(collection(db, 'expenses'), data);
+            closeModal();
+        } catch (err) { alert('Error: ' + err.message); }
+    });
+};
+
+const openTasksModal = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const workersByS
